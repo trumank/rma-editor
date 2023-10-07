@@ -1,4 +1,5 @@
 use rma_lib::{from_object_property, FromExport, FromProperties, FromProperty};
+use serde::Serialize;
 use three_d::*;
 
 use anyhow::{bail, Result};
@@ -24,12 +25,12 @@ pub fn read_asset<P: AsRef<Path>>(
     Ok(asset)
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct RoomFeatureBase {
     room_features: Vec<RoomFeature>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 enum RoomFeature {
     FloodFillBox,
     FloodFillProceduralPillar,
@@ -45,7 +46,7 @@ enum RoomFeature {
     DropPodCalldownLocationFeature,
 }
 
-#[derive(Debug, Default, FromProperty, FromProperties)]
+#[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 struct FRandRange {
     min: f32,
     max: f32,
@@ -67,7 +68,7 @@ impl<C: Read + Seek> FromProperty<C> for FRandRange {
 }
 */
 
-#[derive(Debug, Default, FromProperty, FromProperties)]
+#[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 struct FRandLinePoint {
     location: FVector,
     range: FRandRange,
@@ -76,8 +77,9 @@ struct FRandLinePoint {
     fill_amount: FRandRange,
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct FloodFillPillar {
+    #[serde(flatten)]
     base: RoomFeatureBase,
     noise_override: UFloodFillSettings,
     points: Vec<FRandLinePoint>,
@@ -86,14 +88,15 @@ struct FloodFillPillar {
     endcap_scale: FRandRange,
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct RandomSelector {
+    #[serde(flatten)]
     base: RoomFeatureBase,
     min: i32,
     max: i32,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 struct FVector {
     x: f32,
     y: f32,
@@ -116,7 +119,7 @@ impl<C: Read + Seek> FromProperty<C> for FVector {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 struct FRotator {
     pitch: f32,
     yaw: f32,
@@ -139,7 +142,7 @@ impl<C: Read + Seek> FromProperty<C> for FRotator {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 enum ECaveEntranceType {
     #[default]
     EntranceAndExit,
@@ -153,7 +156,7 @@ impl<C: Read + Seek> FromProperty<C> for ECaveEntranceType {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 enum ECaveEntrancePriority {
     #[default]
     Primary,
@@ -175,8 +178,9 @@ impl<C: Read + Seek> FromProperty<C> for ECaveEntrancePriority {
     }
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct EntranceFeature {
+    #[serde(flatten)]
     base: RoomFeatureBase,
     location: FVector,
     direction: FRotator,
@@ -184,7 +188,7 @@ struct EntranceFeature {
     priority: ECaveEntrancePriority,
 }
 
-#[derive(Debug, Default, FromProperty, FromProperties)]
+#[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 struct FRoomLinePoint {
     location: FVector,
     h_range: f32,
@@ -198,13 +202,13 @@ struct FRoomLinePoint {
     floor_angle: f32,
 }
 
-#[derive(Debug, Default, FromProperty, FromProperties)]
+#[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 struct FLayeredNoise {
     noise: UFloodFillSettings,
     scale: f32,
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct UFloodFillSettings {
     noise_size: FVector,
     freq_multiplier: f32,
@@ -217,8 +221,9 @@ struct UFloodFillSettings {
     noise_layers: Vec<FLayeredNoise>,
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct FloodFillLine {
+    #[serde(flatten)]
     base: RoomFeatureBase,
     wall_noise_override: UFloodFillSettings,
     ceiling_noise_override: UFloodFillSettings,
@@ -261,7 +266,7 @@ impl<C: Read + Seek> FromProperty<C> for RoomFeature {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 enum ERoomMirroringSupport {
     #[default]
     NotAllowed,
@@ -287,7 +292,7 @@ impl<C: Read + Seek> FromProperty<C> for ERoomMirroringSupport {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 struct FGameplayTagContainer {
     tags: Vec<String>,
 }
@@ -309,7 +314,7 @@ impl<C: Read + Seek> FromProperty<C> for FGameplayTagContainer {
     }
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct RoomGeneratorBase {
     bounds: f32,
     can_only_be_used_once: bool,
@@ -317,8 +322,9 @@ struct RoomGeneratorBase {
     room_tags: FGameplayTagContainer,
 }
 
-#[derive(Debug, Default, FromExport, FromProperties)]
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 struct RoomGenerator {
+    #[serde(flatten)]
     base: RoomGeneratorBase,
     room_features: Vec<RoomFeature>,
 }
@@ -453,17 +459,20 @@ mod test {
     #[test]
     fn test_load_asset() -> Result<()> {
         let asset = read_asset("../RMA_BigBridge02.uasset", EngineVersion::VER_UE4_27)?;
-        //dbg!(asset.asset_data.get_class_export());
-        for (i, export) in asset.asset_data.exports.iter().enumerate() {
-            if let Some(normal) = export.get_normal_export() {
-                if normal.base_export.outer_index.index == 0 {
-                    dbg!(RoomGenerator::from_export(
-                        &asset,
-                        PackageIndex::from_export(i as i32).unwrap()
-                    )?);
-                }
-            }
-        }
+
+        let root = asset
+            .asset_data
+            .exports
+            .iter()
+            .enumerate()
+            .find_map(|(i, export)| {
+                (export.get_base_export().outer_index.index == 0)
+                    .then(|| PackageIndex::from_export(i as i32).unwrap())
+            })
+            .unwrap();
+
+        let room = RoomGenerator::from_export(&asset, root)?;
+        std::fs::write("room.json", serde_json::to_string_pretty(&room)?)?;
         Ok(())
     }
 }

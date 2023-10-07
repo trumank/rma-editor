@@ -10,3 +10,5 @@ tokio = { version = "1.32.0", features = ["full"] }
 unreal_asset.workspace = true
 rma_lib = { path = "../rma_lib" }
 anyhow.workspace = true
+serde_json = "1.0.107"
+serde = { version = "1.0.188", features = ["derive"] }
