@@ -51,32 +51,23 @@ struct FRandRange {
     Max: f32,
 }
 
-#[derive(Debug)]
-struct FloodFillPillar {
-    base: RoomFeatureBase,
-    //noise_override: UFloodFillSettings,
-    //points: Vec<FRandLinePoint>,
-    range_scale: FRandRange,
-    noise_range_scale: FRandRange,
-    endcap_scale: FRandRange,
+#[derive(Debug, Default, FromProperty)]
+struct FRandLinePoint {
+    Location: FVector,
+    range: FRandRange,
+    NoiseRange: FRandRange,
+    SkewFactor: FRandRange,
+    FillAmount: FRandRange,
 }
 
-impl<C: Seek + Read> FromExport<C> for FloodFillPillar {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
-        let properties = &normal_export.properties;
-
-        Ok(Self {
-            base: FromExport::from_export(asset, package_index)?,
-            //location: property_or_default(asset, properties, "Location"),
-            //direction: property_or_default(asset, properties, "Direction"),
-            //entrance_type: Default::default(),
-            range_scale: property_or_default(asset, properties, "RangeScale")?,
-            noise_range_scale: property_or_default(asset, properties, "NoiseRangeScale")?,
-            endcap_scale: property_or_default(asset, properties, "EndcapScale")?,
-        })
-    }
+#[derive(Debug, FromExport)]
+struct FloodFillPillar {
+    base: RoomFeatureBase,
+    NoiseOverride: UFloodFillSettings,
+    Points: Vec<FRandLinePoint>,
+    RangeScale: FRandRange,
+    NoiseRangeScale: FRandRange,
+    EndcapScale: FRandRange,
 }
 
 #[derive(Debug)]
@@ -154,6 +145,11 @@ enum ECaveEntranceType {
     Exit,
     TreassureRoom,
 }
+impl<C: Read + Seek> FromProperty<C> for ECaveEntranceType {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        todo!("{:#?}", property);
+    }
+}
 
 #[derive(Debug, Default)]
 enum ECaveEntrancePriority {
@@ -162,29 +158,28 @@ enum ECaveEntrancePriority {
     Secondary,
 }
 
-#[derive(Debug)]
-struct EntranceFeature {
-    base: RoomFeatureBase,
-    location: FVector,
-    direction: FRotator,
-    entrance_type: ECaveEntranceType,
-    priority: ECaveEntrancePriority,
+impl<C: Read + Seek> FromProperty<C> for ECaveEntrancePriority {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::EnumProperty(property) => property.value.as_ref().unwrap().get_content(|c| {
+                Ok(match c {
+                    "ECaveEntrancePriority::Primary" => ECaveEntrancePriority::Primary,
+                    "ECaveEntrancePriority::Secondary" => ECaveEntrancePriority::Secondary,
+                    _ => bail!("unknown variant {}", c),
+                })
+            }),
+            _ => bail!("{property:?}"),
+        }
+    }
 }
 
-impl<C: Seek + Read> FromExport<C> for EntranceFeature {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
-        let properties = &normal_export.properties;
-
-        Ok(Self {
-            base: FromExport::from_export(asset, package_index)?,
-            location: property_or_default(asset, properties, "Location")?,
-            direction: property_or_default(asset, properties, "Direction")?,
-            entrance_type: Default::default(), // TODO
-            priority: Default::default(),      // TODO
-        })
-    }
+#[derive(Debug, FromExport)]
+struct EntranceFeature {
+    base: RoomFeatureBase,
+    Location: FVector,
+    Direction: FRotator,
+    EntranceType: ECaveEntranceType,
+    Priority: ECaveEntrancePriority,
 }
 
 #[derive(Debug, FromProperty)]
@@ -201,52 +196,38 @@ struct FRoomLinePoint {
     FloorAngle: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromProperty)]
 struct FLayeredNoise {
-    noise: UFloodFillSettings,
-    scale: f32,
+    Noise: UFloodFillSettings,
+    Scale: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, FromExport)]
 struct UFloodFillSettings {
-    noise_size: FVector,
-    freq_multiplier: f32,
-    amplitude_multiplier: f32,
-    min_value: f32,
-    max_value: f32,
-    turbulence: bool,
-    invert: bool,
-    octaves: i32,
-    noise_layers: Vec<FLayeredNoise>,
+    NoiseSize: FVector,
+    FreqMultiplier: f32,
+    AmplitudeMultiplier: f32,
+    MinValue: f32,
+    MaxValue: f32,
+    Turbulence: bool,
+    Invert: bool,
+    Octaves: i32,
+    NoiseLayers: Vec<FLayeredNoise>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromExport)]
 struct FloodFillLine {
     base: RoomFeatureBase,
-    //wall_noise_override: UFloodFillSettings,
-    //ceiling_noise_override: UFloodFillSettings,
-    //flood_noise_override: UFloodFillSettings,
-    //use_detailed_noise: bool,
-    points: Vec<FRoomLinePoint>,
-}
-
-impl<C: Seek + Read> FromExport<C> for FloodFillLine {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
-        let properties = &normal_export.properties;
-
-        Ok(Self {
-            base: FromExport::from_export(asset, package_index)?,
-            points: property_or_default(asset, properties, "Points")?,
-        })
-    }
+    WallNoiseOverride: UFloodFillSettings,
+    CeilingNoiseOverride: UFloodFillSettings,
+    FloodNoiseOverride: UFloodFillSettings,
+    UseDetailedNoise: bool,
+    Points: Vec<FRoomLinePoint>,
 }
 
 impl<C: Seek + Read> FromExport<C> for RoomFeature {
     fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
         let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
         let name = asset
             .get_import(export.get_base_export().class_index)
             .unwrap()
@@ -272,40 +253,15 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
     }
 }
 
-//trait ObjectProperty<C: Read + Seek>: FromExport<C> {}
-
-//impl<C: Read + Seek> ObjectProperty<C> for RoomGenerator {}
-//impl<C: Read + Seek> ObjectProperty<C> for RoomFeature {}
-
-//impl<C: Read + Seek, T: ObjectProperty<C>> FromProperty<C> for T { }
-
-//trait ObjectProperty<C: Read + Seek>: FromExport<C> {
-impl<C: Read + Seek> FromProperty<C> for RoomGenerator {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        from_object_property(asset, property)
-    }
-}
 impl<C: Read + Seek> FromProperty<C> for RoomFeature {
     fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         from_object_property(asset, property)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromExport)]
 struct RoomGenerator {
-    room_features: Vec<RoomFeature>,
-}
-
-impl<C: Seek + Read> FromExport<C> for RoomGenerator {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
-        let properties = &normal_export.properties;
-
-        Ok(Self {
-            room_features: property_or_default(asset, properties, "RoomFeatures")?,
-        })
-    }
+    RoomFeatures: Vec<RoomFeature>,
 }
 
 #[cfg(test)]

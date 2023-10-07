@@ -42,7 +42,6 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
     generics
 }
 
-// Generate an expression to sum up the heap size of each field.
 fn heap_size_sum(data: &Data, properties: TokenStream) -> TokenStream {
     match *data {
         Data::Struct(ref data) => match data.fields {
@@ -83,7 +82,37 @@ pub fn derive_from_export(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     }
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let sum = heap_size_sum(&input.data, quote! { properties });
+    let members = match input.data {
+        Data::Struct(ref data) => match data.fields {
+            Fields::Named(ref fields) => {
+                let recurse = fields.named.iter().map(|f| {
+                    let name = &f.ident;
+                    let name_str = format!("{}", name.as_ref().unwrap());
+                    let literal = Literal::string(&name_str);
+
+                    if name_str == "base" {
+                        quote_spanned! {f.span()=>
+                            #name: rma_lib::FromExport::from_export(asset, package_index)?,
+                        }
+                    } else {
+                        quote_spanned! {f.span()=>
+                            #name: property_or_default(asset, properties, #literal)?,
+                        }
+                    }
+                });
+                quote! {
+                    #(#recurse)*
+                }
+            }
+            Fields::Unnamed(ref _fields) => {
+                unimplemented!();
+            }
+            Fields::Unit => {
+                unimplemented!();
+            }
+        },
+        Data::Enum(_) | Data::Union(_) => unimplemented!(),
+    };
 
     let expanded = quote! {
         impl<C: Seek + Read> #impl_generics rma_lib::FromExport<C> for #name #ty_generics #where_clause {
@@ -92,7 +121,7 @@ pub fn derive_from_export(input: proc_macro::TokenStream) -> proc_macro::TokenSt
                 let normal_export = export.get_normal_export().unwrap();
                 let properties = &normal_export.properties;
                 Ok(Self {
-                    #sum
+                    #members
                 })
             }
         }

@@ -30,6 +30,15 @@ pub trait FromProperty<C: Seek + Read> {
         Self: Sized;
 }
 
+impl<C: Read + Seek> FromProperty<C> for bool {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::BoolProperty(property) => Ok(property.value),
+            _ => bail!("{property:#?}"),
+        }
+    }
+}
+
 impl<C: Read + Seek> FromProperty<C> for f32 {
     fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
