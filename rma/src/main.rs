@@ -1,3 +1,4 @@
+use rma_lib::{FromExport, FromProperty};
 use three_d::*;
 
 use anyhow::{bail, Result};
@@ -34,35 +35,6 @@ fn property_or_default<C: Read + Seek, T: Default + FromProperty<C>>(
         }
     }
     Ok(T::default())
-}
-
-trait FromExport<C: Seek + Read> {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self>
-    where
-        Self: Sized;
-}
-trait FromProperty<C: Seek + Read> {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self>
-    where
-        Self: Sized;
-}
-
-impl<C: Read + Seek> FromProperty<C> for f32 {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        match property {
-            Property::FloatProperty(property) => Ok(property.value.0),
-            _ => bail!("{property:#?}"),
-        }
-    }
-}
-
-impl<C: Read + Seek> FromProperty<C> for i32 {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        match property {
-            Property::IntProperty(property) => Ok(property.value),
-            _ => bail!("{property:#?}"),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -358,21 +330,6 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
     }
 }
 
-impl<C: Read + Seek, T: FromProperty<C>> FromProperty<C> for Vec<T> {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        let mut values = vec![];
-        match property {
-            Property::ArrayProperty(property) => {
-                for value in &property.value {
-                    values.push(T::from_property(asset, value)?);
-                }
-            }
-            _ => bail!("wrong property type"),
-        }
-        Ok(values)
-    }
-}
-
 //trait ObjectProperty<C: Read + Seek>: FromExport<C> {}
 
 //impl<C: Read + Seek> ObjectProperty<C> for RoomGenerator {}
@@ -564,4 +521,9 @@ pub fn main() {
 
         FrameOutput::default()
     });
+}
+
+#[derive(rma_lib::HeapSize)]
+struct Asdf {
+    asdf: u8,
 }

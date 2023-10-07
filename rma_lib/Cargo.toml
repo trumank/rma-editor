@@ -1,0 +1,9 @@
+[package]
+name = "rma_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+unreal_asset.workspace = true
+rma_proc = { path = "../rma_proc" }
+anyhow.workspace = true
