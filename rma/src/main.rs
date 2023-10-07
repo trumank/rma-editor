@@ -1,15 +1,12 @@
-use rma_lib::{
-    from_object_property, property_or_default, FromExport, FromProperties, FromProperty,
-};
+use rma_lib::{from_object_property, FromExport, FromProperties, FromProperty};
 use three_d::*;
 
 use anyhow::{bail, Result};
-use unreal_asset::exports::{ExportBaseTrait, ExportNormalTrait, NormalExport};
-use unreal_asset::properties::{array_property, Property, PropertyDataTrait};
+use unreal_asset::exports::{ExportBaseTrait, ExportNormalTrait};
+use unreal_asset::properties::Property;
 use unreal_asset::reader::ArchiveTrait;
 use unreal_asset::types::PackageIndex;
 
-use std::collections::HashSet;
 use std::fs;
 use std::io::{Cursor, Read, Seek};
 use std::path::Path;
@@ -29,7 +26,7 @@ pub fn read_asset<P: AsRef<Path>>(
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct RoomFeatureBase {
-    RoomFeatures: Vec<RoomFeature>,
+    room_features: Vec<RoomFeature>,
 }
 
 #[derive(Debug)]
@@ -50,8 +47,8 @@ enum RoomFeature {
 
 #[derive(Debug, Default, FromProperty, FromProperties)]
 struct FRandRange {
-    Min: f32,
-    Max: f32,
+    min: f32,
+    max: f32,
 }
 
 /*
@@ -72,28 +69,28 @@ impl<C: Read + Seek> FromProperty<C> for FRandRange {
 
 #[derive(Debug, Default, FromProperty, FromProperties)]
 struct FRandLinePoint {
-    Location: FVector,
-    Range: FRandRange,
-    NoiseRange: FRandRange,
-    SkewFactor: FRandRange,
-    FillAmount: FRandRange,
+    location: FVector,
+    range: FRandRange,
+    noise_range: FRandRange,
+    skew_factor: FRandRange,
+    fill_amount: FRandRange,
 }
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct FloodFillPillar {
     base: RoomFeatureBase,
-    NoiseOverride: UFloodFillSettings,
-    Points: Vec<FRandLinePoint>,
-    RangeScale: FRandRange,
-    NoiseRangeScale: FRandRange,
-    EndcapScale: FRandRange,
+    noise_override: UFloodFillSettings,
+    points: Vec<FRandLinePoint>,
+    range_scale: FRandRange,
+    noise_range_scale: FRandRange,
+    endcap_scale: FRandRange,
 }
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct RandomSelector {
     base: RoomFeatureBase,
-    Min: i32,
-    Max: i32,
+    min: i32,
+    max: i32,
 }
 
 #[derive(Debug, Default)]
@@ -181,53 +178,53 @@ impl<C: Read + Seek> FromProperty<C> for ECaveEntrancePriority {
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct EntranceFeature {
     base: RoomFeatureBase,
-    Location: FVector,
-    Direction: FRotator,
-    EntranceType: ECaveEntranceType,
-    Priority: ECaveEntrancePriority,
+    location: FVector,
+    direction: FRotator,
+    entrance_type: ECaveEntranceType,
+    priority: ECaveEntrancePriority,
 }
 
 #[derive(Debug, Default, FromProperty, FromProperties)]
 struct FRoomLinePoint {
-    Location: FVector,
-    HRange: f32,
-    VRange: f32,
-    CielingNoiseRange: f32,
-    WallNoiseRange: f32,
-    FloorNoiseRange: f32,
-    Cielingheight: f32,
-    HeightScale: f32,
-    FloorDepth: f32,
-    FloorAngle: f32,
+    location: FVector,
+    h_range: f32,
+    v_range: f32,
+    cieling_noise_range: f32,
+    wall_noise_range: f32,
+    floor_noise_range: f32,
+    cielingheight: f32,
+    height_scale: f32,
+    floor_depth: f32,
+    floor_angle: f32,
 }
 
 #[derive(Debug, Default, FromProperty, FromProperties)]
 struct FLayeredNoise {
-    Noise: UFloodFillSettings,
-    Scale: f32,
+    noise: UFloodFillSettings,
+    scale: f32,
 }
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct UFloodFillSettings {
-    NoiseSize: FVector,
-    FreqMultiplier: f32,
-    AmplitudeMultiplier: f32,
-    MinValue: f32,
-    MaxValue: f32,
-    Turbulence: bool,
-    Invert: bool,
-    Octaves: i32,
-    NoiseLayers: Vec<FLayeredNoise>,
+    noise_size: FVector,
+    freq_multiplier: f32,
+    amplitude_multiplier: f32,
+    min_value: f32,
+    max_value: f32,
+    turbulence: bool,
+    invert: bool,
+    octaves: i32,
+    noise_layers: Vec<FLayeredNoise>,
 }
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct FloodFillLine {
     base: RoomFeatureBase,
-    WallNoiseOverride: UFloodFillSettings,
-    CeilingNoiseOverride: UFloodFillSettings,
-    FloodNoiseOverride: UFloodFillSettings,
-    UseDetailedNoise: bool,
-    Points: Vec<FRoomLinePoint>,
+    wall_noise_override: UFloodFillSettings,
+    ceiling_noise_override: UFloodFillSettings,
+    flood_noise_override: UFloodFillSettings,
+    use_detailed_noise: bool,
+    points: Vec<FRoomLinePoint>,
 }
 
 impl<C: Seek + Read> FromExport<C> for RoomFeature {
@@ -314,16 +311,16 @@ impl<C: Read + Seek> FromProperty<C> for FGameplayTagContainer {
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct RoomGeneratorBase {
-    Bounds: f32,
-    CanOnlyBeUsedOnce: bool,
-    MirrorSupport: ERoomMirroringSupport,
-    RoomTags: FGameplayTagContainer,
+    bounds: f32,
+    can_only_be_used_once: bool,
+    mirror_support: ERoomMirroringSupport,
+    room_tags: FGameplayTagContainer,
 }
 
 #[derive(Debug, Default, FromExport, FromProperties)]
 struct RoomGenerator {
     base: RoomGeneratorBase,
-    RoomFeatures: Vec<RoomFeature>,
+    room_features: Vec<RoomFeature>,
 }
 
 #[cfg(test)]
@@ -469,9 +466,4 @@ pub fn main() {
 
         FrameOutput::default()
     });
-}
-
-#[derive(Default, FromProperty, FromProperties)]
-struct asdf {
-    asdf: i32,
 }

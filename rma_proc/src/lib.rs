@@ -1,42 +1,26 @@
-use std::collections::HashSet;
-
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::Literal;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{
-    parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
-};
+use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics};
+
+// Add a bound `T: FromProperty` to every type parameter T.
+fn add_trait_bounds(mut generics: Generics) -> Generics {
+    for param in &mut generics.params {
+        if let GenericParam::Type(ref mut type_param) = *param {
+            type_param.bounds.push(parse_quote!(rma_lib::FromProperty));
+        }
+    }
+    generics
+}
 
 #[proc_macro_derive(FromProperty)]
-pub fn derive_heap_size(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn derive_from_property(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let name = input.ident;
 
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let members = match input.data {
-        Data::Struct(ref data) => match data.fields {
-            Fields::Named(ref fields) => {
-                let members = fields.named.iter().map(|f| {
-                    let name = &f.ident;
-                    let literal = Literal::string(&name.as_ref().unwrap().to_string());
-                    quote_spanned! {f.span()=> #literal}
-                });
-                quote! {
-                    #(#members,)*
-                }
-            }
-            Fields::Unnamed(ref _fields) => {
-                unimplemented!();
-            }
-            Fields::Unit => {
-                unimplemented!();
-            }
-        },
-        Data::Enum(_) | Data::Union(_) => unimplemented!(),
-    };
 
     let expanded = quote! {
         impl<C: Seek + Read> #impl_generics rma_lib::FromProperty<C> for #name #ty_generics #where_clause {
@@ -52,16 +36,6 @@ pub fn derive_heap_size(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     };
 
     proc_macro::TokenStream::from(expanded)
-}
-
-// Add a bound `T: FromProperty` to every type parameter T.
-fn add_trait_bounds(mut generics: Generics) -> Generics {
-    for param in &mut generics.params {
-        if let GenericParam::Type(ref mut type_param) = *param {
-            type_param.bounds.push(parse_quote!(rma_lib::FromProperty));
-        }
-    }
-    generics
 }
 
 #[proc_macro_derive(FromExport)]
@@ -115,10 +89,12 @@ pub fn derive_from_properties(input: proc_macro::TokenStream) -> proc_macro::Tok
     let members = match input.data {
         Data::Struct(ref data) => match data.fields {
             Fields::Named(ref fields) => {
+                use heck::ToPascalCase;
+
                 let recurse = fields.named.iter().map(|f| {
                     let name = &f.ident;
                     let name_str = name.as_ref().unwrap().to_string();
-                    let literal = Literal::string(&name_str);
+                    let literal = Literal::string(&name_str.to_pascal_case());
 
                     if name_str == "base" {
                         quote_spanned! {f.span()=>
