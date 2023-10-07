@@ -9,24 +9,13 @@ use unreal_asset::{
     Asset,
 };
 
-pub trait HeapSize {
-    /// Total number of bytes of heap memory owned by `self`.
-    ///
-    /// Does not include the size of `self` itself, which may or may not be on
-    /// the heap. Includes only children of `self`, meaning things pointed to by
-    /// `self`.
-    fn heap_size_of_children(&self) -> usize;
-}
-
-//
-// In a real version of this library there would be lots more impls here, but
-// here are some interesting ones.
-//
-
-impl HeapSize for u8 {
-    /// A `u8` does not own any heap memory.
-    fn heap_size_of_children(&self) -> usize {
-        0
+pub fn from_object_property<C: Read + Seek, T: FromExport<C>>(
+    asset: &Asset<C>,
+    property: &Property,
+) -> Result<T> {
+    match property {
+        Property::ObjectProperty(property) => T::from_export(asset, property.value),
+        _ => bail!("wrong property type"),
     }
 }
 

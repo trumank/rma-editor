@@ -1,4 +1,4 @@
-use rma_lib::{property_or_default, FromExport, FromProperty};
+use rma_lib::{from_object_property, property_or_default, FromExport, FromProperty};
 use three_d::*;
 
 use anyhow::{bail, Result};
@@ -24,19 +24,9 @@ pub fn read_asset<P: AsRef<Path>>(
     Ok(asset)
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromExport)]
 struct RoomFeatureBase {
-    room_features: Vec<RoomFeature>,
-}
-impl<C: Seek + Read> FromExport<C> for RoomFeatureBase {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
-        let properties = &normal_export.properties;
-        Ok(Self {
-            room_features: property_or_default(asset, properties, "RoomFeatures")?,
-        })
-    }
+    RoomFeatures: Vec<RoomFeature>,
 }
 
 #[derive(Debug)]
@@ -197,41 +187,18 @@ impl<C: Seek + Read> FromExport<C> for EntranceFeature {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromProperty)]
 struct FRoomLinePoint {
-    location: FVector,
-    h_range: f32,
-    v_range: f32,
-    cieling_noise_range: f32,
-    wall_noise_range: f32,
-    floor_noise_range: f32,
-    cieling_height: f32,
-    height_scale: f32,
-    floor_depth: f32,
-    floor_angle: f32,
-}
-impl<C: Read + Seek> FromProperty<C> for FRoomLinePoint {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        match property {
-            Property::StructProperty(property) => Ok(Self {
-                location: property_or_default(asset, &property.value, "Location")?,
-                h_range: property_or_default(asset, &property.value, "HRange")?,
-                v_range: property_or_default(asset, &property.value, "VRange")?,
-                cieling_noise_range: property_or_default(
-                    asset,
-                    &property.value,
-                    "CielingNoiseRange",
-                )?,
-                wall_noise_range: property_or_default(asset, &property.value, "WallNoiseRange")?,
-                floor_noise_range: property_or_default(asset, &property.value, "FloorNoiseRange")?,
-                cieling_height: property_or_default(asset, &property.value, "Cielingheight")?,
-                height_scale: property_or_default(asset, &property.value, "HeightScale")?,
-                floor_depth: property_or_default(asset, &property.value, "FloorDepth")?,
-                floor_angle: property_or_default(asset, &property.value, "FloorAngle")?,
-            }),
-            _ => bail!("wrong property type"),
-        }
-    }
+    Location: FVector,
+    HRange: f32,
+    VRange: f32,
+    CielingNoiseRange: f32,
+    WallNoiseRange: f32,
+    FloorNoiseRange: f32,
+    Cielingheight: f32,
+    HeightScale: f32,
+    FloorDepth: f32,
+    FloorAngle: f32,
 }
 
 #[derive(Debug)]
@@ -313,15 +280,6 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
 //impl<C: Read + Seek, T: ObjectProperty<C>> FromProperty<C> for T { }
 
 //trait ObjectProperty<C: Read + Seek>: FromExport<C> {
-fn from_object_property<C: Read + Seek, T: FromExport<C>>(
-    asset: &Asset<C>,
-    property: &Property,
-) -> Result<T> {
-    match property {
-        Property::ObjectProperty(property) => T::from_export(asset, property.value),
-        _ => bail!("wrong property type"),
-    }
-}
 impl<C: Read + Seek> FromProperty<C> for RoomGenerator {
     fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         from_object_property(asset, property)
@@ -358,7 +316,7 @@ mod test {
 
     #[test]
     fn test_load_asset() -> Result<()> {
-        let asset = read_asset("RMA_BigBridge02.uasset", EngineVersion::VER_UE4_27)?;
+        let asset = read_asset("../RMA_BigBridge02.uasset", EngineVersion::VER_UE4_27)?;
         //dbg!(asset.asset_data.get_class_export());
         for (i, export) in asset.asset_data.exports.iter().enumerate() {
             if let Some(normal) = export.get_normal_export() {
@@ -368,9 +326,6 @@ mod test {
                         PackageIndex::from_export(i as i32).unwrap()
                     )?);
                 }
-                //for prop in &normal.properties {
-                //dbg!(prop);
-                //}
             }
         }
         Ok(())
@@ -496,10 +451,4 @@ pub fn main() {
 
         FrameOutput::default()
     });
-}
-
-#[derive(rma_lib::FromProperty)]
-struct Asdf {
-    asdf: f32,
-    asdf2: f32,
 }
