@@ -1,6 +1,6 @@
 use three_d::*;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use unreal_asset::exports::{ExportBaseTrait, ExportNormalTrait, NormalExport};
 use unreal_asset::properties::{array_property, Property, PropertyDataTrait};
 use unreal_asset::reader::ArchiveTrait;
@@ -27,20 +27,42 @@ fn property_or_default<C: Read + Seek, T: Default + FromProperty<C>>(
     asset: &Asset<C>,
     properties: &[Property],
     name: &str,
-) -> T {
+) -> Result<T> {
     for property in properties {
         if property.get_name().get_content(|c| c == name) {
-            return T::from_proeprty(asset, property);
+            return T::from_property(asset, property);
         }
     }
-    T::default()
+    Ok(T::default())
 }
 
 trait FromExport<C: Seek + Read> {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Self;
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self>
+    where
+        Self: Sized;
 }
 trait FromProperty<C: Seek + Read> {
-    fn from_proeprty(asset: &Asset<C>, property: &Property) -> Self;
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self>
+    where
+        Self: Sized;
+}
+
+impl<C: Read + Seek> FromProperty<C> for f32 {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::FloatProperty(property) => Ok(property.value.0),
+            _ => bail!("{property:#?}"),
+        }
+    }
+}
+
+impl<C: Read + Seek> FromProperty<C> for i32 {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::IntProperty(property) => Ok(property.value),
+            _ => bail!("{property:#?}"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -48,13 +70,13 @@ struct RoomFeatureBase {
     room_features: Vec<RoomFeature>,
 }
 impl<C: Seek + Read> FromExport<C> for RoomFeatureBase {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Self {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
         let export = asset.get_export(package_index).unwrap();
         let normal_export = export.get_normal_export().unwrap();
         let properties = &normal_export.properties;
-        Self {
-            room_features: property_or_default(asset, properties, "RoomFeatures"),
-        }
+        Ok(Self {
+            room_features: property_or_default(asset, properties, "RoomFeatures")?,
+        })
     }
 }
 
@@ -68,7 +90,7 @@ enum RoomFeature {
     EntranceFeature(EntranceFeature),
     RandomSubRoomFeature,
     SpawnActorFeature,
-    FloodFillLine,
+    FloodFillLine(FloodFillLine),
     ResourceFeature,
     SubRoomFeature,
     DropPodCalldownLocationFeature,
@@ -81,16 +103,13 @@ struct FRandRange {
 }
 
 impl<C: Read + Seek> FromProperty<C> for FRandRange {
-    fn from_proeprty(asset: &Asset<C>, property: &Property) -> Self {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
-            Property::StructProperty(property) => match &property.value[0] {
-                Property::VectorProperty(property) => Self {
-                    min: property.value.y.0 as f32,
-                    max: property.value.z.0 as f32,
-                },
-                _ => panic!("{property:?}"),
-            },
-            _ => panic!("{property:?}"),
+            Property::StructProperty(property) => Ok(Self {
+                min: property_or_default(asset, &property.value, "Min")?,
+                max: property_or_default(asset, &property.value, "Max")?,
+            }),
+            _ => bail!("{property:#?}"),
         }
     }
 }
@@ -106,35 +125,41 @@ struct FloodFillPillar {
 }
 
 impl<C: Seek + Read> FromExport<C> for FloodFillPillar {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Self {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
         let export = asset.get_export(package_index).unwrap();
         let normal_export = export.get_normal_export().unwrap();
         let properties = &normal_export.properties;
 
-        Self {
-            base: FromExport::from_export(asset, package_index),
+        Ok(Self {
+            base: FromExport::from_export(asset, package_index)?,
             //location: property_or_default(asset, properties, "Location"),
             //direction: property_or_default(asset, properties, "Direction"),
             //entrance_type: Default::default(),
-            range_scale: property_or_default(asset, properties, "RangeScale"),
-            noise_range_scale: property_or_default(asset, properties, "NoiseRangeScale"),
-            endcap_scale: property_or_default(asset, properties, "EndcapScale"),
-        }
+            range_scale: property_or_default(asset, properties, "RangeScale")?,
+            noise_range_scale: property_or_default(asset, properties, "NoiseRangeScale")?,
+            endcap_scale: property_or_default(asset, properties, "EndcapScale")?,
+        })
     }
 }
-
 
 #[derive(Debug)]
 struct RandomSelector {
     base: RoomFeatureBase,
+    min: i32,
+    max: i32,
 }
 
 impl<C: Seek + Read> FromExport<C> for RandomSelector {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Self {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
         let export = asset.get_export(package_index).unwrap();
         let normal_export = export.get_normal_export().unwrap();
         let properties = &normal_export.properties;
-        todo!();
+
+        Ok(Self {
+            base: FromExport::from_export(asset, package_index)?,
+            min: property_or_default(asset, properties, "Min")?,
+            max: property_or_default(asset, properties, "Max")?,
+        })
     }
 }
 
@@ -146,17 +171,17 @@ struct FVector {
 }
 
 impl<C: Read + Seek> FromProperty<C> for FVector {
-    fn from_proeprty(asset: &Asset<C>, property: &Property) -> Self {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::StructProperty(property) => match &property.value[0] {
-                Property::VectorProperty(property) => Self {
+                Property::VectorProperty(property) => Ok(Self {
                     x: property.value.x.0 as f32,
                     y: property.value.y.0 as f32,
                     z: property.value.z.0 as f32,
-                },
-                _ => panic!("{property:?}"),
+                }),
+                _ => bail!("{property:?}"),
             },
-            _ => panic!("{property:?}"),
+            _ => bail!("{property:?}"),
         }
     }
 }
@@ -169,17 +194,17 @@ struct FRotator {
 }
 
 impl<C: Read + Seek> FromProperty<C> for FRotator {
-    fn from_proeprty(asset: &Asset<C>, property: &Property) -> Self {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::StructProperty(property) => match &property.value[0] {
-                Property::RotatorProperty(property) => Self {
+                Property::RotatorProperty(property) => Ok(Self {
                     pitch: property.value.x.0 as f32,
                     yaw: property.value.y.0 as f32,
                     roll: property.value.z.0 as f32,
-                },
-                _ => panic!("{property:?}"),
+                }),
+                _ => bail!("{property:?}"),
             },
-            _ => panic!("{property:?}"),
+            _ => bail!("{property:?}"),
         }
     }
 }
@@ -210,23 +235,102 @@ struct EntranceFeature {
 }
 
 impl<C: Seek + Read> FromExport<C> for EntranceFeature {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Self {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
         let export = asset.get_export(package_index).unwrap();
         let normal_export = export.get_normal_export().unwrap();
         let properties = &normal_export.properties;
 
-        Self {
-            base: FromExport::from_export(asset, package_index),
-            location: property_or_default(asset, properties, "Location"),
-            direction: property_or_default(asset, properties, "Direction"),
-            entrance_type: Default::default(),
-            priority: Default::default(),
+        Ok(Self {
+            base: FromExport::from_export(asset, package_index)?,
+            location: property_or_default(asset, properties, "Location")?,
+            direction: property_or_default(asset, properties, "Direction")?,
+            entrance_type: Default::default(), // TODO
+            priority: Default::default(),      // TODO
+        })
+    }
+}
+
+#[derive(Debug)]
+struct FRoomLinePoint {
+    location: FVector,
+    h_range: f32,
+    v_range: f32,
+    cieling_noise_range: f32,
+    wall_noise_range: f32,
+    floor_noise_range: f32,
+    cieling_height: f32,
+    height_scale: f32,
+    floor_depth: f32,
+    floor_angle: f32,
+}
+impl<C: Read + Seek> FromProperty<C> for FRoomLinePoint {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::StructProperty(property) => Ok(Self {
+                location: property_or_default(asset, &property.value, "Location")?,
+                h_range: property_or_default(asset, &property.value, "HRange")?,
+                v_range: property_or_default(asset, &property.value, "VRange")?,
+                cieling_noise_range: property_or_default(
+                    asset,
+                    &property.value,
+                    "CielingNoiseRange",
+                )?,
+                wall_noise_range: property_or_default(asset, &property.value, "WallNoiseRange")?,
+                floor_noise_range: property_or_default(asset, &property.value, "FloorNoiseRange")?,
+                cieling_height: property_or_default(asset, &property.value, "Cielingheight")?,
+                height_scale: property_or_default(asset, &property.value, "HeightScale")?,
+                floor_depth: property_or_default(asset, &property.value, "FloorDepth")?,
+                floor_angle: property_or_default(asset, &property.value, "FloorAngle")?,
+            }),
+            _ => bail!("wrong property type"),
         }
     }
 }
 
+#[derive(Debug)]
+struct FLayeredNoise {
+    noise: UFloodFillSettings,
+    scale: f32,
+}
+
+#[derive(Debug)]
+struct UFloodFillSettings {
+    noise_size: FVector,
+    freq_multiplier: f32,
+    amplitude_multiplier: f32,
+    min_value: f32,
+    max_value: f32,
+    turbulence: bool,
+    invert: bool,
+    octaves: i32,
+    noise_layers: Vec<FLayeredNoise>,
+}
+
+#[derive(Debug)]
+struct FloodFillLine {
+    base: RoomFeatureBase,
+    //wall_noise_override: UFloodFillSettings,
+    //ceiling_noise_override: UFloodFillSettings,
+    //flood_noise_override: UFloodFillSettings,
+    //use_detailed_noise: bool,
+    points: Vec<FRoomLinePoint>,
+}
+
+impl<C: Seek + Read> FromExport<C> for FloodFillLine {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
+        let export = asset.get_export(package_index).unwrap();
+        let normal_export = export.get_normal_export().unwrap();
+        let properties = &normal_export.properties;
+
+        Ok(Self {
+            base: FromExport::from_export(asset, package_index)?,
+            points: property_or_default(asset, properties, "Points")?,
+        })
+    }
+}
+
 impl<C: Seek + Read> FromExport<C> for RoomFeature {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Self {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
         let export = asset.get_export(package_index).unwrap();
         let normal_export = export.get_normal_export().unwrap();
         let name = asset
@@ -237,37 +341,63 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
 
         let res = match name.as_str() {
             "FloodFillPillar" => {
-                RoomFeature::FloodFillPillar(FromExport::from_export(asset, package_index))
+                RoomFeature::FloodFillPillar(FromExport::from_export(asset, package_index)?)
             }
             "RandomSelector" => {
-                RoomFeature::RandomSelector(FromExport::from_export(asset, package_index))
+                RoomFeature::RandomSelector(FromExport::from_export(asset, package_index)?)
             }
             "EntranceFeature" => {
-                RoomFeature::EntranceFeature(FromExport::from_export(asset, package_index))
+                RoomFeature::EntranceFeature(FromExport::from_export(asset, package_index)?)
+            }
+            "FloodFillLine" => {
+                RoomFeature::FloodFillLine(FromExport::from_export(asset, package_index)?)
             }
             _ => unimplemented!("{}", name),
         };
-        dbg!(res)
+        Ok(dbg!(res))
     }
 }
 
-impl<C: Read + Seek, T: FromExport<C>> FromProperty<C> for Vec<T> {
-    fn from_proeprty(asset: &Asset<C>, property: &Property) -> Self {
+impl<C: Read + Seek, T: FromProperty<C>> FromProperty<C> for Vec<T> {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         let mut values = vec![];
         match property {
             Property::ArrayProperty(property) => {
                 for value in &property.value {
-                    match value {
-                        Property::ObjectProperty(property) => {
-                            values.push(T::from_export(asset, property.value));
-                        }
-                        _ => panic!("wrong property type"),
-                    }
+                    values.push(T::from_property(asset, value)?);
                 }
             }
-            _ => panic!("wrong property type"),
+            _ => bail!("wrong property type"),
         }
-        values
+        Ok(values)
+    }
+}
+
+//trait ObjectProperty<C: Read + Seek>: FromExport<C> {}
+
+//impl<C: Read + Seek> ObjectProperty<C> for RoomGenerator {}
+//impl<C: Read + Seek> ObjectProperty<C> for RoomFeature {}
+
+//impl<C: Read + Seek, T: ObjectProperty<C>> FromProperty<C> for T { }
+
+//trait ObjectProperty<C: Read + Seek>: FromExport<C> {
+fn from_object_property<C: Read + Seek, T: FromExport<C>>(
+    asset: &Asset<C>,
+    property: &Property,
+) -> Result<T> {
+    match property {
+        Property::ObjectProperty(property) => T::from_export(asset, property.value),
+        _ => bail!("wrong property type"),
+    }
+}
+impl<C: Read + Seek> FromProperty<C> for RoomGenerator {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        from_object_property(asset, property)
+    }
+}
+impl<C: Read + Seek> FromProperty<C> for RoomFeature {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        from_object_property(asset, property)
     }
 }
 
@@ -276,21 +406,15 @@ struct RoomGenerator {
     room_features: Vec<RoomFeature>,
 }
 
-impl RoomGenerator {
-    fn from<C: std::io::Seek + std::io::Read>(asset: &Asset<C>, export: PackageIndex) {
-        let properties = &asset
-            .get_export(export)
-            .unwrap()
-            .get_normal_export()
-            .unwrap()
-            .properties;
-        for prop in properties {
-            if prop.get_name().get_content(|c| c == "RoomFeatures") {
-                let a: Vec<RoomFeature> = FromProperty::from_proeprty(asset, prop);
-                dbg!(a);
-            }
-        }
-        dbg!();
+impl<C: Seek + Read> FromExport<C> for RoomGenerator {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
+        let export = asset.get_export(package_index).unwrap();
+        let normal_export = export.get_normal_export().unwrap();
+        let properties = &normal_export.properties;
+
+        Ok(Self {
+            room_features: property_or_default(asset, properties, "RoomFeatures")?,
+        })
     }
 }
 
@@ -307,7 +431,10 @@ mod test {
         for (i, export) in asset.asset_data.exports.iter().enumerate() {
             if let Some(normal) = export.get_normal_export() {
                 if normal.base_export.outer_index.index == 0 {
-                    RoomGenerator::from(&asset, PackageIndex::from_export(i as i32).unwrap());
+                    dbg!(RoomGenerator::from_export(
+                        &asset,
+                        PackageIndex::from_export(i as i32).unwrap()
+                    )?);
                 }
                 //for prop in &normal.properties {
                 //dbg!(prop);

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.75"
+anyhow = { version = "1.0.75", features = ["backtrace"] }
 three-d = "0.16.0"
 three-d-asset = { version = "0.6.0", features = ["pcd"] }
 tokio = { version = "1.32.0", features = ["full"] }
