@@ -1,6 +1,9 @@
 pub use rma_proc::*;
 
-use std::io::{Read, Seek};
+use std::{
+    collections::HashSet,
+    io::{Read, Seek},
+};
 
 use anyhow::{bail, Result};
 use unreal_asset::{
@@ -26,6 +29,15 @@ pub trait FromExport<C: Seek + Read> {
 }
 pub trait FromProperty<C: Seek + Read> {
     fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self>
+    where
+        Self: Sized;
+}
+pub trait FromProperties<C: Seek + Read> {
+    fn from_properties(
+        asset: &Asset<C>,
+        property: &[Property],
+        expected_properties: &mut HashSet<&str>,
+    ) -> Result<Self>
     where
         Self: Sized;
 }
@@ -83,4 +95,38 @@ pub fn property_or_default<C: Read + Seek, T: Default + FromProperty<C>>(
         }
     }
     Ok(T::default())
+}
+
+pub fn property_or_default_notify<C: Read + Seek, T: Default + FromProperty<C>>(
+    asset: &Asset<C>,
+    properties: &[Property],
+    name: &'static str,
+    expected_properties: &mut HashSet<&str>,
+) -> Result<T> {
+    expected_properties.insert(name);
+    for property in properties {
+        if property.get_name().get_content(|c| c == name) {
+            return T::from_property(asset, property);
+        }
+    }
+    Ok(T::default())
+}
+
+pub fn checked_read<C: Read + Seek, T: Default + FromProperties<C>>(
+    asset: &Asset<C>,
+    properties: &[Property],
+) -> Result<T> {
+    let mut expected_properties = ::std::collections::HashSet::new();
+    let res = FromProperties::from_properties(asset, properties, &mut expected_properties)?;
+    for p in properties {
+        dbg!(&expected_properties);
+        p.get_name().get_content(|c| {
+            ::anyhow::ensure!(
+                expected_properties.contains(&c),
+                "unread property: {c:?} {properties:?}"
+            );
+            Ok(())
+        })?;
+    }
+    Ok(res)
 }

@@ -1,4 +1,6 @@
-use rma_lib::{from_object_property, property_or_default, FromExport, FromProperty};
+use rma_lib::{
+    from_object_property, property_or_default, FromExport, FromProperties, FromProperty,
+};
 use three_d::*;
 
 use anyhow::{bail, Result};
@@ -7,6 +9,7 @@ use unreal_asset::properties::{array_property, Property, PropertyDataTrait};
 use unreal_asset::reader::ArchiveTrait;
 use unreal_asset::types::PackageIndex;
 
+use std::collections::HashSet;
 use std::fs;
 use std::io::{Cursor, Read, Seek};
 use std::path::Path;
@@ -24,7 +27,7 @@ pub fn read_asset<P: AsRef<Path>>(
     Ok(asset)
 }
 
-#[derive(Debug, FromExport)]
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct RoomFeatureBase {
     RoomFeatures: Vec<RoomFeature>,
 }
@@ -45,22 +48,38 @@ enum RoomFeature {
     DropPodCalldownLocationFeature,
 }
 
-#[derive(Debug, Default, FromProperty)]
+#[derive(Debug, Default, FromProperty, FromProperties)]
 struct FRandRange {
     Min: f32,
     Max: f32,
 }
 
-#[derive(Debug, Default, FromProperty)]
+/*
+impl<C: Read + Seek> FromProperty<C> for FRandRange {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        let mut read_properties = HashSet::new();
+        let res = match property {
+            Property::StructProperty(property) => {
+                FRandRange::from_properties(asset, &property.value, &mut read_properties)?
+            }
+            _ => bail!("sdafdsaf")
+        };
+        assert_eq!(read_properties, ["asdf".into()].into());
+        Ok(res)
+    }
+}
+*/
+
+#[derive(Debug, Default, FromProperty, FromProperties)]
 struct FRandLinePoint {
     Location: FVector,
-    range: FRandRange,
+    Range: FRandRange,
     NoiseRange: FRandRange,
     SkewFactor: FRandRange,
     FillAmount: FRandRange,
 }
 
-#[derive(Debug, FromExport)]
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct FloodFillPillar {
     base: RoomFeatureBase,
     NoiseOverride: UFloodFillSettings,
@@ -70,25 +89,11 @@ struct FloodFillPillar {
     EndcapScale: FRandRange,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct RandomSelector {
     base: RoomFeatureBase,
-    min: i32,
-    max: i32,
-}
-
-impl<C: Seek + Read> FromExport<C> for RandomSelector {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let normal_export = export.get_normal_export().unwrap();
-        let properties = &normal_export.properties;
-
-        Ok(Self {
-            base: FromExport::from_export(asset, package_index)?,
-            min: property_or_default(asset, properties, "Min")?,
-            max: property_or_default(asset, properties, "Max")?,
-        })
-    }
+    Min: i32,
+    Max: i32,
 }
 
 #[derive(Debug, Default)]
@@ -173,7 +178,7 @@ impl<C: Read + Seek> FromProperty<C> for ECaveEntrancePriority {
     }
 }
 
-#[derive(Debug, FromExport)]
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct EntranceFeature {
     base: RoomFeatureBase,
     Location: FVector,
@@ -182,7 +187,7 @@ struct EntranceFeature {
     Priority: ECaveEntrancePriority,
 }
 
-#[derive(Debug, FromProperty)]
+#[derive(Debug, Default, FromProperty, FromProperties)]
 struct FRoomLinePoint {
     Location: FVector,
     HRange: f32,
@@ -196,13 +201,13 @@ struct FRoomLinePoint {
     FloorAngle: f32,
 }
 
-#[derive(Debug, FromProperty)]
+#[derive(Debug, Default, FromProperty, FromProperties)]
 struct FLayeredNoise {
     Noise: UFloodFillSettings,
     Scale: f32,
 }
 
-#[derive(Debug, Default, FromExport)]
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct UFloodFillSettings {
     NoiseSize: FVector,
     FreqMultiplier: f32,
@@ -215,7 +220,7 @@ struct UFloodFillSettings {
     NoiseLayers: Vec<FLayeredNoise>,
 }
 
-#[derive(Debug, FromExport)]
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct FloodFillLine {
     base: RoomFeatureBase,
     WallNoiseOverride: UFloodFillSettings,
@@ -259,8 +264,65 @@ impl<C: Read + Seek> FromProperty<C> for RoomFeature {
     }
 }
 
-#[derive(Debug, FromExport)]
+#[derive(Debug, Default)]
+enum ERoomMirroringSupport {
+    #[default]
+    NotAllowed,
+    MirrorAroundX,
+    MirrorAroundY,
+    MirrorBoth,
+}
+impl<C: Read + Seek> FromProperty<C> for ERoomMirroringSupport {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        todo!("{property:?}");
+        /*
+        match property {
+            Property::EnumProperty(property) => property.value.as_ref().unwrap().get_content(|c| {
+                Ok(match c {
+                    "ECaveEntrancePriority::Primary" => ECaveEntrancePriority::Primary,
+                    "ECaveEntrancePriority::Secondary" => ECaveEntrancePriority::Secondary,
+                    _ => bail!("unknown variant {}", c),
+                })
+            }),
+            _ => bail!("{property:?}"),
+        }
+        */
+    }
+}
+
+#[derive(Debug, Default)]
+struct FGameplayTagContainer {
+    tags: Vec<String>,
+}
+impl<C: Read + Seek> FromProperty<C> for FGameplayTagContainer {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::StructProperty(property) => match &property.value[0] {
+                Property::GameplayTagContainerProperty(property) => Ok(Self {
+                    tags: property
+                        .value
+                        .iter()
+                        .map(|n| n.get_owned_content())
+                        .collect(),
+                }),
+                _ => bail!("{property:?}"),
+            },
+            _ => bail!("{property:?}"),
+        }
+    }
+}
+
+#[derive(Debug, Default, FromExport, FromProperties)]
+struct RoomGeneratorBase {
+    Bounds: f32,
+    CanOnlyBeUsedOnce: bool,
+    MirrorSupport: ERoomMirroringSupport,
+    RoomTags: FGameplayTagContainer,
+}
+
+#[derive(Debug, Default, FromExport, FromProperties)]
 struct RoomGenerator {
+    base: RoomGeneratorBase,
     RoomFeatures: Vec<RoomFeature>,
 }
 
@@ -407,4 +469,9 @@ pub fn main() {
 
         FrameOutput::default()
     });
+}
+
+#[derive(Default, FromProperty, FromProperties)]
+struct asdf {
+    asdf: i32,
 }
