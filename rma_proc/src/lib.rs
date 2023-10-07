@@ -1,11 +1,11 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
 };
 
-#[proc_macro_derive(HeapSize)]
+#[proc_macro_derive(FromProperty)]
 pub fn derive_heap_size(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the input tokens into a syntax tree.
     let input = parse_macro_input!(input as DeriveInput);
@@ -22,9 +22,14 @@ pub fn derive_heap_size(input: proc_macro::TokenStream) -> proc_macro::TokenStre
 
     let expanded = quote! {
         // The generated impl.
-        impl #impl_generics rma_lib::HeapSize for #name #ty_generics #where_clause {
-            fn heap_size_of_children(&self) -> usize {
-                #sum
+        impl<C: Seek + Read> #impl_generics rma_lib::FromProperty<C> for #name #ty_generics #where_clause {
+            fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+                match property {
+                    Property::StructProperty(property) => Ok(Self {
+                        #sum
+                    }),
+                    _ => bail!("{property:#?}"),
+                }
             }
         }
     };
@@ -33,11 +38,11 @@ pub fn derive_heap_size(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     proc_macro::TokenStream::from(expanded)
 }
 
-// Add a bound `T: HeapSize` to every type parameter T.
+// Add a bound `T: FromProperty` to every type parameter T.
 fn add_trait_bounds(mut generics: Generics) -> Generics {
     for param in &mut generics.params {
         if let GenericParam::Type(ref mut type_param) = *param {
-            type_param.bounds.push(parse_quote!(rma_lib::HeapSize));
+            type_param.bounds.push(parse_quote!(rma_lib::FromProperty));
         }
     }
     generics
@@ -63,31 +68,20 @@ fn heap_size_sum(data: &Data) -> TokenStream {
                     // readme of the parent directory.
                     let recurse = fields.named.iter().map(|f| {
                         let name = &f.ident;
+                        let literal = Literal::string(&format!("{}", name.as_ref().unwrap()));
                         quote_spanned! {f.span()=>
-                            rma_lib::HeapSize::heap_size_of_children(&self.#name)
+                            #name: property_or_default(asset, &property.value, #literal)?,
                         }
                     });
                     quote! {
-                        0 #(+ #recurse)*
+                        #(#recurse)*
                     }
                 }
-                Fields::Unnamed(ref fields) => {
-                    // Expands to an expression like
-                    //
-                    //     0 + self.0.heap_size() + self.1.heap_size() + self.2.heap_size()
-                    let recurse = fields.unnamed.iter().enumerate().map(|(i, f)| {
-                        let index = Index::from(i);
-                        quote_spanned! {f.span()=>
-                            heapsize::HeapSize::heap_size_of_children(&self.#index)
-                        }
-                    });
-                    quote! {
-                        0 #(+ #recurse)*
-                    }
+                Fields::Unnamed(ref _fields) => {
+                    unimplemented!();
                 }
                 Fields::Unit => {
-                    // Unit structs cannot own more than 0 bytes of heap memory.
-                    quote!(0)
+                    unimplemented!();
                 }
             }
         }

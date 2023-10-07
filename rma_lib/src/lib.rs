@@ -1,8 +1,13 @@
+pub use rma_proc::*;
+
 use std::io::{Read, Seek};
 
 use anyhow::{bail, Result};
-pub use rma_proc::*;
-use unreal_asset::{properties::Property, types::PackageIndex, Asset};
+use unreal_asset::{
+    properties::{Property, PropertyDataTrait},
+    types::PackageIndex,
+    Asset,
+};
 
 pub trait HeapSize {
     /// Total number of bytes of heap memory owned by `self`.
@@ -67,4 +72,17 @@ impl<C: Read + Seek, T: FromProperty<C>> FromProperty<C> for Vec<T> {
         }
         Ok(values)
     }
+}
+
+pub fn property_or_default<C: Read + Seek, T: Default + FromProperty<C>>(
+    asset: &Asset<C>,
+    properties: &[Property],
+    name: &str,
+) -> Result<T> {
+    for property in properties {
+        if property.get_name().get_content(|c| c == name) {
+            return T::from_property(asset, property);
+        }
+    }
+    Ok(T::default())
 }

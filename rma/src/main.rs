@@ -1,4 +1,4 @@
-use rma_lib::{FromExport, FromProperty};
+use rma_lib::{property_or_default, FromExport, FromProperty};
 use three_d::*;
 
 use anyhow::{bail, Result};
@@ -22,19 +22,6 @@ pub fn read_asset<P: AsRef<Path>>(
     let asset = Asset::new(uasset, Some(uexp), version, None)?;
 
     Ok(asset)
-}
-
-fn property_or_default<C: Read + Seek, T: Default + FromProperty<C>>(
-    asset: &Asset<C>,
-    properties: &[Property],
-    name: &str,
-) -> Result<T> {
-    for property in properties {
-        if property.get_name().get_content(|c| c == name) {
-            return T::from_property(asset, property);
-        }
-    }
-    Ok(T::default())
 }
 
 #[derive(Debug)]
@@ -68,22 +55,10 @@ enum RoomFeature {
     DropPodCalldownLocationFeature,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, FromProperty)]
 struct FRandRange {
-    min: f32,
-    max: f32,
-}
-
-impl<C: Read + Seek> FromProperty<C> for FRandRange {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        match property {
-            Property::StructProperty(property) => Ok(Self {
-                min: property_or_default(asset, &property.value, "Min")?,
-                max: property_or_default(asset, &property.value, "Max")?,
-            }),
-            _ => bail!("{property:#?}"),
-        }
-    }
+    Min: f32,
+    Max: f32,
 }
 
 #[derive(Debug)]
@@ -523,7 +498,8 @@ pub fn main() {
     });
 }
 
-#[derive(rma_lib::HeapSize)]
+#[derive(rma_lib::FromProperty)]
 struct Asdf {
-    asdf: u8,
+    asdf: f32,
+    asdf2: f32,
 }
