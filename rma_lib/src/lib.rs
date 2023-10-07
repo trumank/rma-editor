@@ -43,7 +43,7 @@ pub trait FromProperties<C: Seek + Read> {
 }
 
 impl<C: Read + Seek> FromProperty<C> for bool {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::BoolProperty(property) => Ok(property.value),
             _ => bail!("{property:#?}"),
@@ -52,7 +52,7 @@ impl<C: Read + Seek> FromProperty<C> for bool {
 }
 
 impl<C: Read + Seek> FromProperty<C> for f32 {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::FloatProperty(property) => Ok(property.value.0),
             _ => bail!("{property:#?}"),
@@ -61,7 +61,7 @@ impl<C: Read + Seek> FromProperty<C> for f32 {
 }
 
 impl<C: Read + Seek> FromProperty<C> for i32 {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::IntProperty(property) => Ok(property.value),
             _ => bail!("{property:#?}"),

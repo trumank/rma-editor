@@ -101,7 +101,7 @@ struct FVector {
 }
 
 impl<C: Read + Seek> FromProperty<C> for FVector {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::StructProperty(property) => match &property.value[0] {
                 Property::VectorProperty(property) => Ok(Self {
@@ -124,7 +124,7 @@ struct FRotator {
 }
 
 impl<C: Read + Seek> FromProperty<C> for FRotator {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
             Property::StructProperty(property) => match &property.value[0] {
                 Property::RotatorProperty(property) => Ok(Self {
@@ -148,7 +148,7 @@ enum ECaveEntranceType {
     TreassureRoom,
 }
 impl<C: Read + Seek> FromProperty<C> for ECaveEntranceType {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         todo!("{:#?}", property);
     }
 }
@@ -323,30 +323,6 @@ struct RoomGenerator {
     room_features: Vec<RoomFeature>,
 }
 
-#[cfg(test)]
-mod test {
-    use unreal_asset::exports::ExportNormalTrait;
-
-    use super::*;
-
-    #[test]
-    fn test_load_asset() -> Result<()> {
-        let asset = read_asset("../RMA_BigBridge02.uasset", EngineVersion::VER_UE4_27)?;
-        //dbg!(asset.asset_data.get_class_export());
-        for (i, export) in asset.asset_data.exports.iter().enumerate() {
-            if let Some(normal) = export.get_normal_export() {
-                if normal.base_export.outer_index.index == 0 {
-                    dbg!(RoomGenerator::from_export(
-                        &asset,
-                        PackageIndex::from_export(i as i32).unwrap()
-                    )?);
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
 pub fn main() {
     let asset = read_asset("RMA_BigBridge02.uasset", EngineVersion::VER_UE4_27);
 
@@ -466,4 +442,28 @@ pub fn main() {
 
         FrameOutput::default()
     });
+}
+
+#[cfg(test)]
+mod test {
+    use unreal_asset::exports::ExportNormalTrait;
+
+    use super::*;
+
+    #[test]
+    fn test_load_asset() -> Result<()> {
+        let asset = read_asset("../RMA_BigBridge02.uasset", EngineVersion::VER_UE4_27)?;
+        //dbg!(asset.asset_data.get_class_export());
+        for (i, export) in asset.asset_data.exports.iter().enumerate() {
+            if let Some(normal) = export.get_normal_export() {
+                if normal.base_export.outer_index.index == 0 {
+                    dbg!(RoomGenerator::from_export(
+                        &asset,
+                        PackageIndex::from_export(i as i32).unwrap()
+                    )?);
+                }
+            }
+        }
+        Ok(())
+    }
 }
