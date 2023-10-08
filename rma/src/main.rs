@@ -1,7 +1,8 @@
 mod rma;
 
 use rma::{
-    DropPodCalldownLocationFeature, EntranceFeature, FloodFillLine, FloodFillPillar, RoomGenerator,
+    DropPodCalldownLocationFeature, EntranceFeature, FloodFillBox, FloodFillLine, FloodFillPillar,
+    RoomGenerator, SpawnActorFeature,
 };
 use rma_lib::FromExport;
 
@@ -118,8 +119,14 @@ pub fn main() -> Result<()> {
 
     let mut path = vec![];
     iter_features(&rma.room_features, &mut path, &mut |f, path| match f {
+        RoomFeature::FloodFillBox(f) => {
+            primitives.insert(path.to_vec(), flood_fill_box(&rma_ctx, f));
+        }
         RoomFeature::FloodFillPillar(f) => {
             primitives.insert(path.to_vec(), flood_fill_pillar(&rma_ctx, f));
+        }
+        RoomFeature::SpawnActorFeature(f) => {
+            primitives.insert(path.to_vec(), spawn_actor_feature(&rma_ctx, f));
         }
         RoomFeature::FloodFillLine(f) => {
             primitives.insert(path.to_vec(), flood_fill_line(&rma_ctx, f));
@@ -250,6 +257,17 @@ fn line_transform(p1: Vector3<f32>, p2: Vector3<f32>) -> Mat4 {
         * Mat4::from_nonuniform_scale((p1 - p2).magnitude(), 1.0, 1.0)
 }
 
+fn flood_fill_box(ctx: &RMAContext, box_: &FloodFillBox) -> Vec<Box<dyn Object>> {
+    // only used in RMA_Escort10
+    let mut mesh = BoundingBox::new(ctx.context, CpuMesh::cube().compute_aabb());
+    mesh.set_transformation(
+        Mat4::from_translation(box_.position.into())
+            * Mat4::from_nonuniform_scale(box_.extends.x, box_.extends.y, box_.extends.z),
+    );
+
+    vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
+}
+
 fn flood_fill_pillar(ctx: &RMAContext, line: &FloodFillPillar) -> Vec<Box<dyn Object>> {
     let mut transformations = Vec::new();
 
@@ -270,6 +288,30 @@ fn flood_fill_pillar(ctx: &RMAContext, line: &FloodFillPillar) -> Vec<Box<dyn Ob
         ),
         ctx.wireframe_material.clone(),
     ))]
+}
+
+fn spawn_actor_feature(ctx: &RMAContext, spawn: &SpawnActorFeature) -> Vec<Box<dyn Object>> {
+    let mut obj = Gm::new(
+        Mesh::new(ctx.context, &CpuMesh::cone(16)),
+        PhysicalMaterial::new_opaque(
+            ctx.context,
+            &CpuMaterial {
+                albedo: Srgba {
+                    r: 255,
+                    g: 200,
+                    b: 0,
+                    a: 200,
+                },
+                ..Default::default()
+            },
+        ),
+    );
+    obj.set_transformation(
+        Mat4::from_translation(spawn.location.into())
+            * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
+            * Mat4::from_angle_y(-Radians::turn_div_4()),
+    );
+    vec![Box::new(obj)]
 }
 
 fn flood_fill_line(ctx: &RMAContext, line: &FloodFillLine) -> Vec<Box<dyn Object>> {

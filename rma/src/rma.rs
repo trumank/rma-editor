@@ -24,7 +24,7 @@ pub enum RoomFeature {
     RandomSelector(RandomSelector),
     EntranceFeature(EntranceFeature),
     RandomSubRoomFeature,
-    SpawnActorFeature,
+    SpawnActorFeature(SpawnActorFeature),
     FloodFillLine(FloodFillLine),
     ResourceFeature,
     SubRoomFeature,
@@ -41,7 +41,7 @@ impl RoomFeature {
             RoomFeature::RandomSelector(_) => "RandomSelector",
             RoomFeature::EntranceFeature(_) => "EntranceFeature",
             RoomFeature::RandomSubRoomFeature => "RandomSubRoomFeature",
-            RoomFeature::SpawnActorFeature => "SpawnActorFeature ",
+            RoomFeature::SpawnActorFeature(_) => "SpawnActorFeature",
             RoomFeature::FloodFillLine(_) => "FloodFillLine",
             RoomFeature::ResourceFeature => "ResourceFeature ",
             RoomFeature::SubRoomFeature => "SubRoomFeature ",
@@ -57,7 +57,7 @@ impl RoomFeature {
             RoomFeature::RandomSelector(f) => &f.base,
             RoomFeature::EntranceFeature(f) => &f.base,
             RoomFeature::RandomSubRoomFeature => todo!(),
-            RoomFeature::SpawnActorFeature => todo!(),
+            RoomFeature::SpawnActorFeature(f) => &f.base,
             RoomFeature::FloodFillLine(f) => &f.base,
             RoomFeature::ResourceFeature => todo!(),
             RoomFeature::SubRoomFeature => todo!(),
@@ -88,6 +88,9 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
             "EntranceFeature" => {
                 RoomFeature::EntranceFeature(FromExport::from_export(asset, package_index)?)
             }
+            "SpawnActorFeature" => {
+                RoomFeature::SpawnActorFeature(FromExport::from_export(asset, package_index)?)
+            }
             "FloodFillLine" => {
                 RoomFeature::FloodFillLine(FromExport::from_export(asset, package_index)?)
             }
@@ -103,13 +106,13 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 pub struct FloodFillBox {
     #[serde(flatten)]
-    base: RoomFeatureBase,
-    noise: (), // TODO import Option<UFloodFillSettings>,
-    position: FVector,
-    extends: FVector,
-    rotation: FRotator,
-    is_carver: bool,
-    noise_range: f32,
+    pub base: RoomFeatureBase,
+    pub noise: (), // TODO import Option<UFloodFillSettings>,
+    pub position: FVector,
+    pub extends: FVector,
+    pub rotation: FRotator,
+    pub is_carver: bool,
+    pub noise_range: f32,
 }
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
@@ -291,6 +294,44 @@ pub struct FloodFillLine {
     pub flood_noise_override: Option<UFloodFillSettings>,
     pub use_detailed_noise: bool,
     pub points: Vec<FRoomLinePoint>,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub enum EItemAdjustmentType {
+    #[default]
+    None,
+    Cieling,
+    Wall,
+    Floor,
+}
+impl<C: Read + Seek> FromProperty<C> for EItemAdjustmentType {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::EnumProperty(property) => property.value.as_ref().unwrap().get_content(|c| {
+                Ok(match c {
+                    "EItemAdjustmentType::None" => EItemAdjustmentType::None,
+                    "EItemAdjustmentType::Ceiling" => EItemAdjustmentType::Cieling,
+                    "EItemAdjustmentType::Wall" => EItemAdjustmentType::Wall,
+                    "EItemAdjustmentType::Floor" => EItemAdjustmentType::Floor,
+                    _ => bail!("unknown variant {}", c),
+                })
+            }),
+            _ => bail!("{property:?}"),
+        }
+    }
+}
+
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
+pub struct SpawnActorFeature {
+    #[serde(flatten)]
+    pub base: RoomFeatureBase,
+    pub location: FVector,
+    pub actor_to_spawn: (), // TODO TSubclassOf<AActor>
+    pub adjustment_direction: FVector,
+    pub adjustments: EItemAdjustmentType,
+    pub scale_min: FVector,
+    pub scale_max: FVector,
+    pub rotation_delta: FRotator,
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
