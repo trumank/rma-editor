@@ -1,67 +1,37 @@
-mod rma;
-mod room_features;
-
-use rma::RoomGenerator;
-use rma_lib::FromExport;
+#[cfg(target_arch = "wasm32")]
+use crate as rma;
 
 use anyhow::Result;
 use three_d::*;
-use unreal_asset::engine_version::EngineVersion;
-use unreal_asset::exports::ExportBaseTrait;
-use unreal_asset::types::PackageIndex;
-use unreal_asset::Asset;
 
 use std::collections::HashMap;
-use std::io::Cursor;
-use std::path::Path;
-use std::{fs, ops::Deref};
+use std::ops::Deref;
 
-use crate::rma::RoomFeature;
-use crate::room_features::RoomFeatureTrait;
+use rma::rma::RoomFeature;
+use rma::rma::RoomGenerator;
+use rma::room_features::RoomFeatureTrait;
+use rma::RMAContext;
 
-pub fn read_asset<P: AsRef<Path>>(
-    path: P,
-    version: EngineVersion,
-) -> Result<Asset<Cursor<Vec<u8>>>> {
-    let uasset = Cursor::new(fs::read(&path)?);
-    let uexp = Cursor::new(fs::read(path.as_ref().with_extension("uexp"))?);
-    let asset = Asset::new(uasset, Some(uexp), version, None)?;
+// Entry point for non-wasm
+#[cfg(not(target_arch = "wasm32"))]
+#[tokio::main]
+async fn main() -> Result<()> {
+    use rma::{read_asset, read_rma};
+    use unreal_asset::engine_version::EngineVersion;
 
-    Ok(asset)
-}
-
-fn read_rma<P: AsRef<Path>>(path: P) -> Result<RoomGenerator> {
-    let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
-
-    let root = asset
-        .asset_data
-        .exports
-        .iter()
-        .enumerate()
-        .find_map(|(i, export)| {
-            (export.get_base_export().outer_index.index == 0)
-                .then(|| PackageIndex::from_export(i as i32).unwrap())
-        })
-        .unwrap();
-
-    RoomGenerator::from_export(&asset, root)
-}
-
-pub struct RMAContext<'c> {
-    context: &'c Context,
-    wireframe_material: PhysicalMaterial,
-    wireframe_mesh: CpuMesh,
-}
-
-pub fn main() -> Result<()> {
     let path = std::env::args()
         .nth(1)
         .expect("expected path to an RMA .uasset");
-    let rma = read_rma(path)?;
 
+    let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
+    let rma = read_rma(asset)?;
+
+    run(rma).await
+}
+
+pub async fn run(rma: RoomGenerator) -> Result<()> {
     let window = Window::new(WindowSettings {
-        title: "Shapes!".to_string(),
-        max_size: Some((1280, 720)),
+        title: "RMA Editor".to_string(),
         ..Default::default()
     })
     .unwrap();
@@ -207,6 +177,22 @@ pub fn main() -> Result<()> {
         };
 
         camera.set_viewport(viewport);
+
+        #[cfg(target_arch = "wasm32")]
+        for event in &mut frame_input.events {
+            if let Event::MouseWheel {
+                ref mut delta,
+                handled,
+                ..
+            } = event
+            {
+                if !*handled {
+                    // artificially decrease zoom delta
+                    // https://github.com/asny/three-d/issues/403
+                    delta.1 /= 5.;
+                }
+            }
+        }
         control.handle_events(&mut camera, &mut frame_input.events);
 
         frame_input
@@ -235,17 +221,4 @@ pub fn main() -> Result<()> {
     });
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_load_asset() -> Result<()> {
-        let rma = read_rma("../RMA_BigBridge02.uasset")?;
-
-        std::fs::write("../room.json", serde_json::to_string_pretty(&rma)?)?;
-        Ok(())
-    }
 }
