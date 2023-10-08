@@ -31,6 +31,41 @@ pub enum RoomFeature {
     DropPodCalldownLocationFeature,
 }
 
+impl RoomFeature {
+    pub fn name(&self) -> &'static str {
+        match self {
+            RoomFeature::FloodFillBox => "FloodFillBox",
+            RoomFeature::FloodFillProceduralPillar => "FloodFillProceduralPillar",
+            RoomFeature::SpawnTriggerFeature => "SpawnTriggerFeature ",
+            RoomFeature::FloodFillPillar(_) => "FloodFillPillar",
+            RoomFeature::RandomSelector(_) => "RandomSelector",
+            RoomFeature::EntranceFeature(_) => "EntranceFeature",
+            RoomFeature::RandomSubRoomFeature => "RandomSubRoomFeature",
+            RoomFeature::SpawnActorFeature => "SpawnActorFeature ",
+            RoomFeature::FloodFillLine(_) => "FloodFillLine",
+            RoomFeature::ResourceFeature => "ResourceFeature ",
+            RoomFeature::SubRoomFeature => "SubRoomFeature ",
+            RoomFeature::DropPodCalldownLocationFeature => "DropPodCalldownLocationFeature",
+        }
+    }
+    pub fn base(&self) -> &RoomFeatureBase {
+        match self {
+            RoomFeature::FloodFillBox => todo!(),
+            RoomFeature::FloodFillProceduralPillar => todo!(),
+            RoomFeature::SpawnTriggerFeature => todo!(),
+            RoomFeature::FloodFillPillar(f) => &f.base,
+            RoomFeature::RandomSelector(f) => &f.base,
+            RoomFeature::EntranceFeature(f) => &f.base,
+            RoomFeature::RandomSubRoomFeature => todo!(),
+            RoomFeature::SpawnActorFeature => todo!(),
+            RoomFeature::FloodFillLine(f) => &f.base,
+            RoomFeature::ResourceFeature => todo!(),
+            RoomFeature::SubRoomFeature => todo!(),
+            RoomFeature::DropPodCalldownLocationFeature => todo!(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 pub struct FRandRange {
     pub min: f32,

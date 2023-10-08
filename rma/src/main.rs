@@ -1,6 +1,6 @@
 mod rma;
 
-use rma::{FloodFillLine, RoomGenerator};
+use rma::{FloodFillLine, FloodFillPillar, RoomGenerator};
 use rma_lib::FromExport;
 
 use anyhow::Result;
@@ -46,7 +46,6 @@ fn read_rma<P: AsRef<Path>>(path: P) -> Result<RoomGenerator> {
 
 pub fn main() -> Result<()> {
     let rma = read_rma("RMA_BigBridge02.uasset")?;
-    dbg!(&rma);
 
     let window = Window::new(WindowSettings {
         title: "Shapes!".to_string(),
@@ -90,47 +89,77 @@ pub fn main() -> Result<()> {
         .transform(&Mat4::from_nonuniform_scale(1.0, 10.0, 10.0))
         .unwrap();
 
-    fn iter_features<F>(features: Vec<RoomFeature>, f: &mut F)
+    fn iter_features<F>(features: &[RoomFeature], f: &mut F)
     where
         F: FnMut(&RoomFeature),
     {
         for feat in features {
-            f(&feat);
-            match feat {
-                RoomFeature::FloodFillBox => todo!(),
-                RoomFeature::FloodFillProceduralPillar => todo!(),
-                RoomFeature::SpawnTriggerFeature => todo!(),
-                RoomFeature::FloodFillPillar(feat) => iter_features(feat.base.room_features, f),
-                RoomFeature::RandomSelector(feat) => iter_features(feat.base.room_features, f),
-                RoomFeature::EntranceFeature(feat) => iter_features(feat.base.room_features, f),
-                RoomFeature::RandomSubRoomFeature => todo!(),
-                RoomFeature::SpawnActorFeature => todo!(),
-                RoomFeature::FloodFillLine(feat) => iter_features(feat.base.room_features, f),
-                RoomFeature::ResourceFeature => todo!(),
-                RoomFeature::SubRoomFeature => todo!(),
-                RoomFeature::DropPodCalldownLocationFeature => todo!(),
-            }
+            println!("{feat:?}");
+            f(feat);
+            iter_features(&feat.base().room_features, f);
         }
     }
 
-    iter_features(rma.room_features, &mut |f| match f {
+    iter_features(&rma.room_features, &mut |f| match f {
+        RoomFeature::FloodFillPillar(f) => {
+            primitives.push(Box::new(Gm::new(
+                InstancedMesh::new(&context, &flood_fill_pillar(f), &cylinder),
+                wireframe_material.clone(),
+            )));
+        }
         RoomFeature::FloodFillLine(f) => {
             primitives.push(Box::new(Gm::new(
-                InstancedMesh::new(&context, &edge_transformations(f), &cylinder),
+                InstancedMesh::new(&context, &flood_fill_line(f), &cylinder),
                 wireframe_material.clone(),
             )));
         }
         _ => {}
     });
-    primitives.truncate(1);
 
     let axes = Axes::new(&context, 10., 200.0);
 
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
+    let mut gui = three_d::GUI::new(&context);
+
     window.render_loop(move |mut frame_input| {
-        camera.set_viewport(frame_input.viewport);
+        let mut panel_width = 0.0;
+        gui.update(
+            &mut frame_input.events,
+            frame_input.accumulated_time,
+            frame_input.viewport,
+            frame_input.device_pixel_ratio,
+            |gui_context| {
+                use three_d::egui::*;
+                SidePanel::left("side_panel").show(gui_context, |ui| {
+                    use three_d::egui::*;
+                    ui.heading("Debug Panel");
+                    fn features(ui: &mut Ui, f: &[RoomFeature]) {
+                        for (i, f) in f.iter().enumerate() {
+                            egui::CollapsingHeader::new(f.name())
+                                .id_source(i)
+                                .default_open(true)
+                                .show(ui, |ui| {
+                                    features(ui, &f.base().room_features);
+                                });
+                        }
+                    }
+                    features(ui, &rma.room_features);
+                });
+                panel_width = gui_context.used_rect().width();
+            },
+        );
+
+        let viewport = Viewport {
+            x: (panel_width * frame_input.device_pixel_ratio) as i32,
+            y: 0,
+            width: frame_input.viewport.width
+                - (panel_width * frame_input.device_pixel_ratio) as u32,
+            height: frame_input.viewport.height,
+        };
+
+        camera.set_viewport(viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
         frame_input
@@ -141,7 +170,8 @@ pub fn main() -> Result<()> {
                 axes.into_iter()
                     .chain(primitives.iter().map(|p| -> &dyn Object { p.deref() })),
                 &[&light0, &light1],
-            );
+            )
+            .write(|| gui.render());
 
         FrameOutput::default()
     });
@@ -155,20 +185,35 @@ impl From<FVector> for Vector3<f32> {
     }
 }
 
-fn edge_transformations(line: &FloodFillLine) -> Instances {
+fn line_transform(p1: Vector3<f32>, p2: Vector3<f32>) -> Mat4 {
+    Mat4::from_translation(p1)
+        * Into::<Mat4>::into(Quat::from_arc(
+            vec3(1.0, 0.0, 0.0),
+            (p2 - p1).normalize(),
+            None,
+        ))
+        * Mat4::from_nonuniform_scale((p1 - p2).magnitude(), 1.0, 1.0)
+}
+
+fn flood_fill_pillar(line: &FloodFillPillar) -> Instances {
     let mut transformations = Vec::new();
 
-    let mut add_line = |p1: Vector3<f32>, p2: Vector3<f32>| {
-        transformations.push(
-            Mat4::from_translation(p1)
-                * Into::<Mat4>::into(Quat::from_arc(
-                    vec3(1.0, 0.0, 0.0),
-                    (p2 - p1).normalize(),
-                    None,
-                ))
-                * Mat4::from_nonuniform_scale((p1 - p2).magnitude(), 1.0, 1.0),
-        );
-    };
+    let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
+
+    for pair in line.points.windows(2) {
+        add_line(pair[0].location.into(), pair[1].location.into());
+    }
+
+    Instances {
+        transformations,
+        ..Default::default()
+    }
+}
+
+fn flood_fill_line(line: &FloodFillLine) -> Instances {
+    let mut transformations = Vec::new();
+
+    let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
 
     for pair in line.points.windows(2) {
         add_line(pair[0].location.into(), pair[1].location.into());

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-three-d = "0.16.0"
+three-d = { version = "0.16.0", features = ["egui-gui"] }
 three-d-asset = { version = "0.6.0", features = ["pcd"] }
 tokio = { version = "1.32.0", features = ["full"] }
 unreal_asset.workspace = true
