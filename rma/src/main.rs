@@ -81,7 +81,7 @@ struct FRandLinePoint {
 struct FloodFillPillar {
     #[serde(flatten)]
     base: RoomFeatureBase,
-    noise_override: UFloodFillSettings,
+    noise_override: Option<UFloodFillSettings>,
     points: Vec<FRandLinePoint>,
     range_scale: FRandRange,
     noise_range_scale: FRandRange,
@@ -225,9 +225,9 @@ struct UFloodFillSettings {
 struct FloodFillLine {
     #[serde(flatten)]
     base: RoomFeatureBase,
-    wall_noise_override: UFloodFillSettings,
-    ceiling_noise_override: UFloodFillSettings,
-    flood_noise_override: UFloodFillSettings,
+    wall_noise_override: Option<UFloodFillSettings>,
+    ceiling_noise_override: Option<UFloodFillSettings>,
+    flood_noise_override: Option<UFloodFillSettings>,
     use_detailed_noise: bool,
     points: Vec<FRoomLinePoint>,
 }

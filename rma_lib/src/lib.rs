@@ -84,6 +84,12 @@ impl<C: Read + Seek, T: FromProperty<C>> FromProperty<C> for Vec<T> {
     }
 }
 
+impl<C: Read + Seek, T: FromProperty<C>> FromProperty<C> for Option<T> {
+    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
+        Ok(Some(T::from_property(asset, property)?))
+    }
+}
+
 pub fn property_or_default<C: Read + Seek, T: Default + FromProperty<C>>(
     asset: &Asset<C>,
     properties: &[Property],
@@ -104,12 +110,14 @@ pub fn property_or_default_notify<C: Read + Seek, T: Default + FromProperty<C>>(
     expected_properties: &mut HashSet<&str>,
 ) -> Result<T> {
     expected_properties.insert(name);
-    for property in properties {
-        if property.get_name().get_content(|c| c == name) {
-            return T::from_property(asset, property);
-        }
+    if let Some(property) = properties
+        .iter()
+        .find(|p| p.get_name().get_content(|c| c == name))
+    {
+        T::from_property(asset, property)
+    } else {
+        Ok(T::default())
     }
-    Ok(T::default())
 }
 
 pub fn checked_read<C: Read + Seek, T: Default + FromProperties<C>>(
