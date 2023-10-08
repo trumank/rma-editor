@@ -10,6 +10,7 @@ use unreal_asset::exports::ExportBaseTrait;
 use unreal_asset::types::PackageIndex;
 use unreal_asset::Asset;
 
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::Path;
 use std::{fs, ops::Deref};
@@ -66,7 +67,7 @@ pub fn main() -> Result<()> {
     );
     let mut control = OrbitControl::new(*camera.target(), 1.0, 100000.0);
 
-    let mut primitives = vec![];
+    let mut primitives: HashMap<Vec<usize>, _> = Default::default();
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -77,9 +78,6 @@ pub fn main() -> Result<()> {
                 b: 0,
                 a: 200,
             },
-            //albedo: Srgba::new_opaque(220, 50, 50),
-            //roughness: 0.7,
-            //metallic: 0.8,
             ..Default::default()
         },
     );
@@ -89,29 +87,37 @@ pub fn main() -> Result<()> {
         .transform(&Mat4::from_nonuniform_scale(1.0, 10.0, 10.0))
         .unwrap();
 
-    fn iter_features<F>(features: &[RoomFeature], f: &mut F)
+    fn iter_features<F, T>(features: &[RoomFeature], path: &mut Vec<usize>, f: &mut F)
     where
-        F: FnMut(&RoomFeature),
+        F: FnMut(&RoomFeature, &[usize]) -> T,
     {
-        for feat in features {
-            println!("{feat:?}");
-            f(feat);
-            iter_features(&feat.base().room_features, f);
+        path.push(0);
+        for (i, feat) in features.iter().enumerate() {
+            *path.last_mut().unwrap() = i;
+            f(feat, path);
+            iter_features(&feat.base().room_features, path, f);
         }
     }
 
-    iter_features(&rma.room_features, &mut |f| match f {
+    let mut path = vec![];
+    iter_features(&rma.room_features, &mut path, &mut |f, path| match f {
         RoomFeature::FloodFillPillar(f) => {
-            primitives.push(Box::new(Gm::new(
-                InstancedMesh::new(&context, &flood_fill_pillar(f), &cylinder),
-                wireframe_material.clone(),
-            )));
+            primitives.insert(
+                path.to_vec(),
+                Box::new(Gm::new(
+                    InstancedMesh::new(&context, &flood_fill_pillar(f), &cylinder),
+                    wireframe_material.clone(),
+                )),
+            );
         }
         RoomFeature::FloodFillLine(f) => {
-            primitives.push(Box::new(Gm::new(
-                InstancedMesh::new(&context, &flood_fill_line(f), &cylinder),
-                wireframe_material.clone(),
-            )));
+            primitives.insert(
+                path.to_vec(),
+                Box::new(Gm::new(
+                    InstancedMesh::new(&context, &flood_fill_line(f), &cylinder),
+                    wireframe_material.clone(),
+                )),
+            );
         }
         _ => {}
     });
@@ -121,7 +127,13 @@ pub fn main() -> Result<()> {
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
+    #[derive(Default)]
+    struct State {
+        visible: bool,
+    }
+
     let mut gui = three_d::GUI::new(&context);
+    let mut states = HashMap::<Vec<usize>, State>::new();
 
     window.render_loop(move |mut frame_input| {
         let mut panel_width = 0.0;
@@ -135,17 +147,33 @@ pub fn main() -> Result<()> {
                 SidePanel::left("side_panel").show(gui_context, |ui| {
                     use three_d::egui::*;
                     ui.heading("Debug Panel");
-                    fn features(ui: &mut Ui, f: &[RoomFeature]) {
+                    fn features(
+                        ui: &mut Ui,
+                        path: &mut Vec<usize>,
+                        f: &[RoomFeature],
+                        states: &mut HashMap<Vec<usize>, State>,
+                    ) {
+                        path.push(0);
                         for (i, f) in f.iter().enumerate() {
-                            egui::CollapsingHeader::new(f.name())
-                                .id_source(i)
-                                .default_open(true)
-                                .show(ui, |ui| {
-                                    features(ui, &f.base().room_features);
-                                });
+                            *path.last_mut().unwrap() = i;
+
+                            let id = ui.make_persistent_id(i);
+                            egui::collapsing_header::CollapsingState::load_with_default_open(
+                                ui.ctx(),
+                                id,
+                                true,
+                            )
+                            .show_header(ui, |ui| {
+                                ui.checkbox(
+                                    &mut states.entry(path.clone()).or_default().visible,
+                                    f.name(),
+                                )
+                            })
+                            .body(|ui| features(ui, path, &f.base().room_features, states));
                         }
                     }
-                    features(ui, &rma.room_features);
+                    let mut path = vec![];
+                    features(ui, &mut path, &rma.room_features, &mut states);
                 });
                 panel_width = gui_context.used_rect().width();
             },
@@ -168,7 +196,11 @@ pub fn main() -> Result<()> {
             .render(
                 &camera,
                 axes.into_iter()
-                    .chain(primitives.iter().map(|p| -> &dyn Object { p.deref() })),
+                    .chain(primitives.iter().flat_map(|(path, p)| {
+                        states.get(path).and_then(|state| -> Option<&dyn Object> {
+                            state.visible.then_some(p.deref())
+                        })
+                    })),
                 &[&light0, &light1],
             )
             .write(|| gui.render());
