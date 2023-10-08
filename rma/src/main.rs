@@ -251,7 +251,20 @@ fn flood_fill_line(line: &FloodFillLine) -> Instances {
     let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
 
     for pair in line.points.windows(2) {
-        add_line(pair[0].location.into(), pair[1].location.into());
+        let (p1, p2) = (&pair[0], &pair[1]);
+        let v1: Vector3<f32> = p1.location.into();
+        let v2: Vector3<f32> = p2.location.into();
+        //add_line(v1, v2);
+
+        let d = v1.truncate() - v2.truncate();
+        let d = d / d.magnitude();
+        let d = vec2(-d.y, d.x);
+
+        let o1 = (p1.h_range * d).extend(0.);
+        let o2 = (p2.h_range * d).extend(0.);
+        add_line(v1 + o1, v2 + o2);
+        add_line(v1 - o1, v2 - o2);
+        add_line(v1 + vec3(0., 0., p1.v_range), v2 + vec3(0., 0., p2.v_range));
     }
 
     // horizontal perimeter circle
