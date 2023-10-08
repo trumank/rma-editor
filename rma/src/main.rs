@@ -1,6 +1,6 @@
 mod rma;
 
-use rma::{FloodFillLine, FloodFillPillar, RoomGenerator};
+use rma::{EntranceFeature, FloodFillLine, FloodFillPillar, RoomGenerator};
 use rma_lib::FromExport;
 
 use anyhow::Result;
@@ -45,6 +45,12 @@ fn read_rma<P: AsRef<Path>>(path: P) -> Result<RoomGenerator> {
     RoomGenerator::from_export(&asset, root)
 }
 
+struct RMAContext<'c> {
+    context: &'c Context,
+    wireframe_material: PhysicalMaterial,
+    wireframe_mesh: CpuMesh,
+}
+
 pub fn main() -> Result<()> {
     let path = std::env::args()
         .nth(1)
@@ -70,7 +76,7 @@ pub fn main() -> Result<()> {
     );
     let mut control = OrbitControl::new(*camera.target(), 1.0, 100000.0);
 
-    let mut primitives: HashMap<Vec<usize>, _> = Default::default();
+    let mut primitives: HashMap<Vec<usize>, Vec<Box<dyn Object>>> = Default::default();
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -85,10 +91,16 @@ pub fn main() -> Result<()> {
         },
     );
     wireframe_material.render_states.cull = Cull::Back;
-    let mut cylinder = CpuMesh::cylinder(10);
-    cylinder
+    let mut wireframe_mesh = CpuMesh::cylinder(10);
+    wireframe_mesh
         .transform(&Mat4::from_nonuniform_scale(1.0, 10.0, 10.0))
         .unwrap();
+
+    let rma_ctx = RMAContext {
+        context: &context,
+        wireframe_material,
+        wireframe_mesh,
+    };
 
     fn iter_features<F, T>(features: &[RoomFeature], path: &mut Vec<usize>, f: &mut F)
     where
@@ -105,22 +117,13 @@ pub fn main() -> Result<()> {
     let mut path = vec![];
     iter_features(&rma.room_features, &mut path, &mut |f, path| match f {
         RoomFeature::FloodFillPillar(f) => {
-            primitives.insert(
-                path.to_vec(),
-                Box::new(Gm::new(
-                    InstancedMesh::new(&context, &flood_fill_pillar(f), &cylinder),
-                    wireframe_material.clone(),
-                )),
-            );
+            primitives.insert(path.to_vec(), flood_fill_pillar(&rma_ctx, f));
         }
         RoomFeature::FloodFillLine(f) => {
-            primitives.insert(
-                path.to_vec(),
-                Box::new(Gm::new(
-                    InstancedMesh::new(&context, &flood_fill_line(f), &cylinder),
-                    wireframe_material.clone(),
-                )),
-            );
+            primitives.insert(path.to_vec(), flood_fill_line(&rma_ctx, f));
+        }
+        RoomFeature::EntranceFeature(f) => {
+            primitives.insert(path.to_vec(), entrance_feature(&rma_ctx, f));
         }
         _ => {}
     });
@@ -200,9 +203,16 @@ pub fn main() -> Result<()> {
                 &camera,
                 axes.into_iter()
                     .chain(primitives.iter().flat_map(|(path, p)| {
-                        states.get(path).and_then(|state| -> Option<&dyn Object> {
-                            state.visible.then_some(p.deref())
-                        })
+                        states
+                            .get(path)
+                            .and_then(|state: &State| {
+                                state
+                                    .visible
+                                    .then(|| -> Box<dyn Iterator<Item = &dyn Object>> {
+                                        Box::new(p.iter().map(|o| o.deref()))
+                                    })
+                            })
+                            .unwrap_or_else(|| Box::new(std::iter::empty()))
                     })),
                 &[&light0, &light1],
             )
@@ -230,7 +240,7 @@ fn line_transform(p1: Vector3<f32>, p2: Vector3<f32>) -> Mat4 {
         * Mat4::from_nonuniform_scale((p1 - p2).magnitude(), 1.0, 1.0)
 }
 
-fn flood_fill_pillar(line: &FloodFillPillar) -> Instances {
+fn flood_fill_pillar(ctx: &RMAContext, line: &FloodFillPillar) -> Vec<Box<dyn Object>> {
     let mut transformations = Vec::new();
 
     let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
@@ -239,13 +249,20 @@ fn flood_fill_pillar(line: &FloodFillPillar) -> Instances {
         add_line(pair[0].location.into(), pair[1].location.into());
     }
 
-    Instances {
-        transformations,
-        ..Default::default()
-    }
+    vec![Box::new(Gm::new(
+        InstancedMesh::new(
+            ctx.context,
+            &Instances {
+                transformations,
+                ..Default::default()
+            },
+            &ctx.wireframe_mesh,
+        ),
+        ctx.wireframe_material.clone(),
+    ))]
 }
 
-fn flood_fill_line(line: &FloodFillLine) -> Instances {
+fn flood_fill_line(ctx: &RMAContext, line: &FloodFillLine) -> Vec<Box<dyn Object>> {
     let mut transformations = Vec::new();
 
     let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
@@ -329,10 +346,62 @@ fn flood_fill_line(line: &FloodFillLine) -> Instances {
         }
     }
 
-    Instances {
-        transformations,
-        ..Default::default()
-    }
+    vec![Box::new(Gm::new(
+        InstancedMesh::new(
+            ctx.context,
+            &Instances {
+                transformations,
+                ..Default::default()
+            },
+            &ctx.wireframe_mesh,
+        ),
+        ctx.wireframe_material.clone(),
+    ))]
+}
+
+fn entrance_feature(ctx: &RMAContext, entrance: &EntranceFeature) -> Vec<Box<dyn Object>> {
+    let albedo = match entrance.entrance_type {
+        rma::ECaveEntranceType::EntranceAndExit => Srgba {
+            r: 0,
+            g: 255,
+            b: 255,
+            a: 200,
+        },
+        rma::ECaveEntranceType::Entrance => Srgba {
+            r: 255,
+            g: 200,
+            b: 0,
+            a: 200,
+        },
+        rma::ECaveEntranceType::Exit => Srgba {
+            r: 255,
+            g: 0,
+            b: 100,
+            a: 200,
+        },
+        rma::ECaveEntranceType::TreassureRoom => Srgba {
+            r: 255,
+            g: 200,
+            b: 0,
+            a: 200,
+        },
+    };
+    let mut sphere = Gm::new(
+        Mesh::new(ctx.context, &CpuMesh::sphere(16)),
+        PhysicalMaterial::new_opaque(
+            ctx.context,
+            &CpuMaterial {
+                albedo,
+                ..Default::default()
+            },
+        ),
+    );
+    // TODO there's also a direction component but I can't be bothered to figure out how it's
+    // mapped at this moment
+    sphere.set_transformation(
+        Mat4::from_translation(entrance.location.into()) * Mat4::from_scale(100.0),
+    );
+    vec![Box::new(sphere)]
 }
 
 #[cfg(test)]

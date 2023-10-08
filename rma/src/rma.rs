@@ -198,7 +198,18 @@ pub enum ECaveEntranceType {
 }
 impl<C: Read + Seek> FromProperty<C> for ECaveEntranceType {
     fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
-        todo!("{:#?}", property);
+        match property {
+            Property::EnumProperty(property) => property.value.as_ref().unwrap().get_content(|c| {
+                Ok(match c {
+                    "ECaveEntranceType::EntranceAndExit" => ECaveEntranceType::EntranceAndExit,
+                    "ECaveEntranceType::Entrance" => ECaveEntranceType::Entrance,
+                    "ECaveEntranceType::Exit" => ECaveEntranceType::Exit,
+                    "ECaveEntranceType::TreassureRoom" => ECaveEntranceType::TreassureRoom,
+                    _ => bail!("unknown variant {}", c),
+                })
+            }),
+            _ => bail!("{property:?}"),
+        }
     }
 }
 
