@@ -127,7 +127,6 @@ pub fn checked_read<C: Read + Seek, T: Default + FromProperties<C>>(
     let mut expected_properties = ::std::collections::HashSet::new();
     let res = FromProperties::from_properties(asset, properties, &mut expected_properties)?;
     for p in properties {
-        dbg!(&expected_properties);
         p.get_name().get_content(|c| {
             ::anyhow::ensure!(
                 expected_properties.contains(&c),
