@@ -28,7 +28,7 @@ pub enum RoomFeature {
     FloodFillLine(FloodFillLine),
     ResourceFeature,
     SubRoomFeature,
-    DropPodCalldownLocationFeature,
+    DropPodCalldownLocationFeature(DropPodCalldownLocationFeature),
 }
 
 impl RoomFeature {
@@ -45,7 +45,7 @@ impl RoomFeature {
             RoomFeature::FloodFillLine(_) => "FloodFillLine",
             RoomFeature::ResourceFeature => "ResourceFeature ",
             RoomFeature::SubRoomFeature => "SubRoomFeature ",
-            RoomFeature::DropPodCalldownLocationFeature => "DropPodCalldownLocationFeature",
+            RoomFeature::DropPodCalldownLocationFeature(_) => "DropPodCalldownLocationFeature",
         }
     }
     pub fn base(&self) -> &RoomFeatureBase {
@@ -61,7 +61,7 @@ impl RoomFeature {
             RoomFeature::FloodFillLine(f) => &f.base,
             RoomFeature::ResourceFeature => todo!(),
             RoomFeature::SubRoomFeature => todo!(),
-            RoomFeature::DropPodCalldownLocationFeature => todo!(),
+            RoomFeature::DropPodCalldownLocationFeature(f) => &f.base,
         }
     }
 }
@@ -91,6 +91,9 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
             "FloodFillLine" => {
                 RoomFeature::FloodFillLine(FromExport::from_export(asset, package_index)?)
             }
+            "DropPodCalldownLocationFeature" => RoomFeature::DropPodCalldownLocationFeature(
+                FromExport::from_export(asset, package_index)?,
+            ),
             _ => unimplemented!("{}", name),
         };
         Ok(res)
@@ -99,6 +102,7 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 pub struct FloodFillBox {
+    #[serde(flatten)]
     base: RoomFeatureBase,
     noise: (), // TODO import Option<UFloodFillSettings>,
     position: FVector,
@@ -287,6 +291,14 @@ pub struct FloodFillLine {
     pub flood_noise_override: Option<UFloodFillSettings>,
     pub use_detailed_noise: bool,
     pub points: Vec<FRoomLinePoint>,
+}
+
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
+pub struct DropPodCalldownLocationFeature {
+    #[serde(flatten)]
+    pub base: RoomFeatureBase,
+    pub location: FVector,
+    pub call_down_class: (), // TSubclassOf<AActor>
 }
 
 impl<C: Read + Seek> FromProperty<C> for RoomFeature {

@@ -1,6 +1,8 @@
 mod rma;
 
-use rma::{EntranceFeature, FloodFillLine, FloodFillPillar, RoomGenerator};
+use rma::{
+    DropPodCalldownLocationFeature, EntranceFeature, FloodFillLine, FloodFillPillar, RoomGenerator,
+};
 use rma_lib::FromExport;
 
 use anyhow::Result;
@@ -125,6 +127,12 @@ pub fn main() -> Result<()> {
         RoomFeature::EntranceFeature(f) => {
             primitives.insert(path.to_vec(), entrance_feature(&rma_ctx, f));
         }
+        RoomFeature::DropPodCalldownLocationFeature(f) => {
+            primitives.insert(
+                path.to_vec(),
+                drop_pod_calldown_location_feature(&rma_ctx, f),
+            );
+        }
         _ => {}
     });
 
@@ -179,7 +187,9 @@ pub fn main() -> Result<()> {
                         }
                     }
                     let mut path = vec![];
-                    features(ui, &mut path, &rma.room_features, &mut states);
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        features(ui, &mut path, &rma.room_features, &mut states);
+                    });
                 });
                 panel_width = gui_context.used_rect().width();
             },
@@ -369,7 +379,7 @@ fn entrance_feature(ctx: &RMAContext, entrance: &EntranceFeature) -> Vec<Box<dyn
         },
         rma::ECaveEntranceType::Entrance => Srgba {
             r: 255,
-            g: 200,
+            g: 100,
             b: 0,
             a: 200,
         },
@@ -400,6 +410,33 @@ fn entrance_feature(ctx: &RMAContext, entrance: &EntranceFeature) -> Vec<Box<dyn
     // mapped at this moment
     sphere.set_transformation(
         Mat4::from_translation(entrance.location.into()) * Mat4::from_scale(100.0),
+    );
+    vec![Box::new(sphere)]
+}
+
+fn drop_pod_calldown_location_feature(
+    ctx: &RMAContext,
+    entrance: &DropPodCalldownLocationFeature,
+) -> Vec<Box<dyn Object>> {
+    let mut sphere = Gm::new(
+        Mesh::new(ctx.context, &CpuMesh::cylinder(16)),
+        PhysicalMaterial::new_opaque(
+            ctx.context,
+            &CpuMaterial {
+                albedo: Srgba {
+                    r: 0,
+                    g: 255,
+                    b: 0,
+                    a: 200,
+                },
+                ..Default::default()
+            },
+        ),
+    );
+    sphere.set_transformation(
+        Mat4::from_translation(entrance.location.into())
+            * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
+            * Mat4::from_angle_y(Radians::turn_div_4()),
     );
     vec![Box::new(sphere)]
 }
