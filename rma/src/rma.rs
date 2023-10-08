@@ -17,7 +17,7 @@ pub struct RoomFeatureBase {
 
 #[derive(Debug, Serialize)]
 pub enum RoomFeature {
-    FloodFillBox,
+    FloodFillBox(FloodFillBox),
     FloodFillProceduralPillar,
     SpawnTriggerFeature,
     FloodFillPillar(FloodFillPillar),
@@ -34,7 +34,7 @@ pub enum RoomFeature {
 impl RoomFeature {
     pub fn name(&self) -> &'static str {
         match self {
-            RoomFeature::FloodFillBox => "FloodFillBox",
+            RoomFeature::FloodFillBox(_) => "FloodFillBox",
             RoomFeature::FloodFillProceduralPillar => "FloodFillProceduralPillar",
             RoomFeature::SpawnTriggerFeature => "SpawnTriggerFeature ",
             RoomFeature::FloodFillPillar(_) => "FloodFillPillar",
@@ -50,7 +50,7 @@ impl RoomFeature {
     }
     pub fn base(&self) -> &RoomFeatureBase {
         match self {
-            RoomFeature::FloodFillBox => todo!(),
+            RoomFeature::FloodFillBox(f) => &f.base,
             RoomFeature::FloodFillProceduralPillar => todo!(),
             RoomFeature::SpawnTriggerFeature => todo!(),
             RoomFeature::FloodFillPillar(f) => &f.base,
@@ -66,27 +66,53 @@ impl RoomFeature {
     }
 }
 
+impl<C: Seek + Read> FromExport<C> for RoomFeature {
+    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
+        let export = asset.get_export(package_index).unwrap();
+        let name = asset
+            .get_import(export.get_base_export().class_index)
+            .unwrap()
+            .object_name
+            .get_owned_content();
+
+        let res = match name.as_str() {
+            "FloodFillBox" => {
+                RoomFeature::FloodFillBox(FromExport::from_export(asset, package_index)?)
+            }
+            "FloodFillPillar" => {
+                RoomFeature::FloodFillPillar(FromExport::from_export(asset, package_index)?)
+            }
+            "RandomSelector" => {
+                RoomFeature::RandomSelector(FromExport::from_export(asset, package_index)?)
+            }
+            "EntranceFeature" => {
+                RoomFeature::EntranceFeature(FromExport::from_export(asset, package_index)?)
+            }
+            "FloodFillLine" => {
+                RoomFeature::FloodFillLine(FromExport::from_export(asset, package_index)?)
+            }
+            _ => unimplemented!("{}", name),
+        };
+        Ok(res)
+    }
+}
+
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
+pub struct FloodFillBox {
+    base: RoomFeatureBase,
+    noise: (), // TODO import Option<UFloodFillSettings>,
+    position: FVector,
+    extends: FVector,
+    rotation: FRotator,
+    is_carver: bool,
+    noise_range: f32,
+}
+
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 pub struct FRandRange {
     pub min: f32,
     pub max: f32,
 }
-
-/*
-impl<C: Read + Seek> FromProperty<C> for FRandRange {
-    fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
-        let mut read_properties = HashSet::new();
-        let res = match property {
-            Property::StructProperty(property) => {
-                FRandRange::from_properties(asset, &property.value, &mut read_properties)?
-            }
-            _ => bail!("sdafdsaf")
-        };
-        assert_eq!(read_properties, ["asdf".into()].into());
-        Ok(res)
-    }
-}
-*/
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 pub struct FRandLinePoint {
@@ -252,34 +278,6 @@ pub struct FloodFillLine {
     pub points: Vec<FRoomLinePoint>,
 }
 
-impl<C: Seek + Read> FromExport<C> for RoomFeature {
-    fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
-        let name = asset
-            .get_import(export.get_base_export().class_index)
-            .unwrap()
-            .object_name
-            .get_owned_content();
-
-        let res = match name.as_str() {
-            "FloodFillPillar" => {
-                RoomFeature::FloodFillPillar(FromExport::from_export(asset, package_index)?)
-            }
-            "RandomSelector" => {
-                RoomFeature::RandomSelector(FromExport::from_export(asset, package_index)?)
-            }
-            "EntranceFeature" => {
-                RoomFeature::EntranceFeature(FromExport::from_export(asset, package_index)?)
-            }
-            "FloodFillLine" => {
-                RoomFeature::FloodFillLine(FromExport::from_export(asset, package_index)?)
-            }
-            _ => unimplemented!("{}", name),
-        };
-        Ok(res)
-    }
-}
-
 impl<C: Read + Seek> FromProperty<C> for RoomFeature {
     fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
         from_object_property(asset, property)
@@ -296,19 +294,18 @@ pub enum ERoomMirroringSupport {
 }
 impl<C: Read + Seek> FromProperty<C> for ERoomMirroringSupport {
     fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
-        todo!("{property:?}");
-        /*
         match property {
             Property::EnumProperty(property) => property.value.as_ref().unwrap().get_content(|c| {
                 Ok(match c {
-                    "ECaveEntrancePriority::Primary" => ECaveEntrancePriority::Primary,
-                    "ECaveEntrancePriority::Secondary" => ECaveEntrancePriority::Secondary,
+                    "ERoomMirroringSupport::NotAllowed" => ERoomMirroringSupport::NotAllowed,
+                    "ERoomMirroringSupport::MirrorAroundX" => ERoomMirroringSupport::MirrorAroundX,
+                    "ERoomMirroringSupport::MirrorAroundY" => ERoomMirroringSupport::MirrorAroundY,
+                    "ERoomMirroringSupport::MirrorBoth" => ERoomMirroringSupport::MirrorBoth,
                     _ => bail!("unknown variant {}", c),
                 })
             }),
             _ => bail!("{property:?}"),
         }
-        */
     }
 }
 

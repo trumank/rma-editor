@@ -55,8 +55,8 @@ pub fn derive_from_export(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     let expanded = quote! {
         impl<C: Seek + Read> #impl_generics rma_lib::FromExport<C> for #name #ty_generics #where_clause {
             fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-                let export = asset.get_export(package_index).unwrap();
-                let normal_export = export.get_normal_export().unwrap();
+                let export = asset.get_export(package_index).expect("package index points to valid export");
+                let normal_export = export.get_normal_export().expect("export is a NormalExport");
                 let properties = &normal_export.properties;
 
                 ::rma_lib::checked_read(asset, properties)
@@ -93,7 +93,7 @@ pub fn derive_from_properties(input: proc_macro::TokenStream) -> proc_macro::Tok
 
                 let recurse = fields.named.iter().map(|f| {
                     let name = &f.ident;
-                    let name_str = name.as_ref().unwrap().to_string();
+                    let name_str = name.as_ref().expect("identifier has a name").to_string();
                     let literal = Literal::string(&name_str.to_pascal_case());
 
                     if name_str == "base" {

@@ -42,6 +42,13 @@ pub trait FromProperties<C: Seek + Read> {
         Self: Sized;
 }
 
+/// Useful for ignoring properties
+impl<C: Read + Seek> FromProperty<C> for () {
+    fn from_property(_asset: &Asset<C>, _property: &Property) -> Result<Self> {
+        Ok(())
+    }
+}
+
 impl<C: Read + Seek> FromProperty<C> for bool {
     fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
         match property {
