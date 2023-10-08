@@ -11,12 +11,12 @@ use unreal_asset::Asset;
 use std::io::{Read, Seek};
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct RoomFeatureBase {
-    room_features: Vec<RoomFeature>,
+pub struct RoomFeatureBase {
+    pub room_features: Vec<RoomFeature>,
 }
 
 #[derive(Debug, Serialize)]
-enum RoomFeature {
+pub enum RoomFeature {
     FloodFillBox,
     FloodFillProceduralPillar,
     SpawnTriggerFeature,
@@ -32,9 +32,9 @@ enum RoomFeature {
 }
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
-struct FRandRange {
-    min: f32,
-    max: f32,
+pub struct FRandRange {
+    pub min: f32,
+    pub max: f32,
 }
 
 /*
@@ -54,38 +54,38 @@ impl<C: Read + Seek> FromProperty<C> for FRandRange {
 */
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
-struct FRandLinePoint {
-    location: FVector,
-    range: FRandRange,
-    noise_range: FRandRange,
-    skew_factor: FRandRange,
-    fill_amount: FRandRange,
+pub struct FRandLinePoint {
+    pub location: FVector,
+    pub range: FRandRange,
+    pub noise_range: FRandRange,
+    pub skew_factor: FRandRange,
+    pub fill_amount: FRandRange,
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct FloodFillPillar {
+pub struct FloodFillPillar {
     #[serde(flatten)]
-    base: RoomFeatureBase,
-    noise_override: Option<UFloodFillSettings>,
-    points: Vec<FRandLinePoint>,
-    range_scale: FRandRange,
-    noise_range_scale: FRandRange,
-    endcap_scale: FRandRange,
+    pub base: RoomFeatureBase,
+    pub noise_override: Option<UFloodFillSettings>,
+    pub points: Vec<FRandLinePoint>,
+    pub range_scale: FRandRange,
+    pub noise_range_scale: FRandRange,
+    pub endcap_scale: FRandRange,
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct RandomSelector {
+pub struct RandomSelector {
     #[serde(flatten)]
-    base: RoomFeatureBase,
-    min: i32,
-    max: i32,
+    pub base: RoomFeatureBase,
+    pub min: i32,
+    pub max: i32,
 }
 
-#[derive(Debug, Default, Serialize)]
-struct FVector {
-    x: f32,
-    y: f32,
-    z: f32,
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+pub struct FVector {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 impl<C: Read + Seek> FromProperty<C> for FVector {
@@ -104,11 +104,11 @@ impl<C: Read + Seek> FromProperty<C> for FVector {
     }
 }
 
-#[derive(Debug, Default, Serialize)]
-struct FRotator {
-    pitch: f32,
-    yaw: f32,
-    roll: f32,
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+pub struct FRotator {
+    pub pitch: f32,
+    pub yaw: f32,
+    pub roll: f32,
 }
 
 impl<C: Read + Seek> FromProperty<C> for FRotator {
@@ -128,7 +128,7 @@ impl<C: Read + Seek> FromProperty<C> for FRotator {
 }
 
 #[derive(Debug, Default, Serialize)]
-enum ECaveEntranceType {
+pub enum ECaveEntranceType {
     #[default]
     EntranceAndExit,
     Entrance,
@@ -142,7 +142,7 @@ impl<C: Read + Seek> FromProperty<C> for ECaveEntranceType {
 }
 
 #[derive(Debug, Default, Serialize)]
-enum ECaveEntrancePriority {
+pub enum ECaveEntrancePriority {
     #[default]
     Primary,
     Secondary,
@@ -164,57 +164,57 @@ impl<C: Read + Seek> FromProperty<C> for ECaveEntrancePriority {
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct EntranceFeature {
+pub struct EntranceFeature {
     #[serde(flatten)]
-    base: RoomFeatureBase,
-    location: FVector,
-    direction: FRotator,
-    entrance_type: ECaveEntranceType,
-    priority: ECaveEntrancePriority,
+    pub base: RoomFeatureBase,
+    pub location: FVector,
+    pub direction: FRotator,
+    pub entrance_type: ECaveEntranceType,
+    pub priority: ECaveEntrancePriority,
 }
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
-struct FRoomLinePoint {
-    location: FVector,
-    h_range: f32,
-    v_range: f32,
-    cieling_noise_range: f32,
-    wall_noise_range: f32,
-    floor_noise_range: f32,
-    cielingheight: f32,
-    height_scale: f32,
-    floor_depth: f32,
-    floor_angle: f32,
+pub struct FRoomLinePoint {
+    pub location: FVector,
+    pub h_range: f32,
+    pub v_range: f32,
+    pub cieling_noise_range: f32,
+    pub wall_noise_range: f32,
+    pub floor_noise_range: f32,
+    pub cielingheight: f32,
+    pub height_scale: f32,
+    pub floor_depth: f32,
+    pub floor_angle: f32,
 }
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
-struct FLayeredNoise {
-    noise: UFloodFillSettings,
-    scale: f32,
+pub struct FLayeredNoise {
+    pub noise: UFloodFillSettings,
+    pub scale: f32,
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct UFloodFillSettings {
-    noise_size: FVector,
-    freq_multiplier: f32,
-    amplitude_multiplier: f32,
-    min_value: f32,
-    max_value: f32,
-    turbulence: bool,
-    invert: bool,
-    octaves: i32,
-    noise_layers: Vec<FLayeredNoise>,
+pub struct UFloodFillSettings {
+    pub noise_size: FVector,
+    pub freq_multiplier: f32,
+    pub amplitude_multiplier: f32,
+    pub min_value: f32,
+    pub max_value: f32,
+    pub turbulence: bool,
+    pub invert: bool,
+    pub octaves: i32,
+    pub noise_layers: Vec<FLayeredNoise>,
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct FloodFillLine {
+pub struct FloodFillLine {
     #[serde(flatten)]
-    base: RoomFeatureBase,
-    wall_noise_override: Option<UFloodFillSettings>,
-    ceiling_noise_override: Option<UFloodFillSettings>,
-    flood_noise_override: Option<UFloodFillSettings>,
-    use_detailed_noise: bool,
-    points: Vec<FRoomLinePoint>,
+    pub base: RoomFeatureBase,
+    pub wall_noise_override: Option<UFloodFillSettings>,
+    pub ceiling_noise_override: Option<UFloodFillSettings>,
+    pub flood_noise_override: Option<UFloodFillSettings>,
+    pub use_detailed_noise: bool,
+    pub points: Vec<FRoomLinePoint>,
 }
 
 impl<C: Seek + Read> FromExport<C> for RoomFeature {
@@ -252,7 +252,7 @@ impl<C: Read + Seek> FromProperty<C> for RoomFeature {
 }
 
 #[derive(Debug, Default, Serialize)]
-enum ERoomMirroringSupport {
+pub enum ERoomMirroringSupport {
     #[default]
     NotAllowed,
     MirrorAroundX,
@@ -278,8 +278,8 @@ impl<C: Read + Seek> FromProperty<C> for ERoomMirroringSupport {
 }
 
 #[derive(Debug, Default, Serialize)]
-struct FGameplayTagContainer {
-    tags: Vec<String>,
+pub struct FGameplayTagContainer {
+    pub tags: Vec<String>,
 }
 impl<C: Read + Seek> FromProperty<C> for FGameplayTagContainer {
     fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
@@ -300,16 +300,16 @@ impl<C: Read + Seek> FromProperty<C> for FGameplayTagContainer {
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
-struct RoomGeneratorBase {
-    bounds: f32,
-    can_only_be_used_once: bool,
-    mirror_support: ERoomMirroringSupport,
-    room_tags: FGameplayTagContainer,
+pub struct RoomGeneratorBase {
+    pub bounds: f32,
+    pub can_only_be_used_once: bool,
+    pub mirror_support: ERoomMirroringSupport,
+    pub room_tags: FGameplayTagContainer,
 }
 
 #[derive(Debug, Default, Serialize, FromExport, FromProperties)]
 pub struct RoomGenerator {
     #[serde(flatten)]
-    base: RoomGeneratorBase,
-    room_features: Vec<RoomFeature>,
+    pub base: RoomGeneratorBase,
+    pub room_features: Vec<RoomFeature>,
 }
