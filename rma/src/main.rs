@@ -46,7 +46,10 @@ fn read_rma<P: AsRef<Path>>(path: P) -> Result<RoomGenerator> {
 }
 
 pub fn main() -> Result<()> {
-    let rma = read_rma("RMA_BigBridge02.uasset")?;
+    let path = std::env::args()
+        .nth(1)
+        .expect("expected path to an RMA .uasset");
+    let rma = read_rma(path)?;
 
     let window = Window::new(WindowSettings {
         title: "Shapes!".to_string(),
