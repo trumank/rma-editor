@@ -25,6 +25,11 @@ pub struct RMAContext<'c> {
     pub wireframe_mesh: CpuMesh,
 }
 
+pub enum AppMode {
+    Gallery { paths: Vec<String> },
+    Editor { path: String },
+}
+
 pub fn read_asset<P: AsRef<Path>>(
     path: P,
     version: EngineVersion,
@@ -71,21 +76,16 @@ pub async fn start() -> Result<(), JsValue> {
 
 #[cfg(target_arch = "wasm32")]
 pub async fn wasm_main() -> Result<()> {
-    let uasset = three_d_asset::io::load_async(&["rma/RMA_Big02.uasset"])
-        .await
-        .unwrap();
-    let uexp = three_d_asset::io::load_async(&["rma/RMA_Big02.uexp"])
-        .await
-        .unwrap();
+    use rma_lib::list_dir;
 
-    let version = EngineVersion::VER_UE4_27;
-    let uasset = Cursor::new(uasset.get("").unwrap());
-    let uexp = Cursor::new(uexp.get("").unwrap());
-    let asset = Asset::new(uasset, Some(uexp), version, None)?;
+    let mode = AppMode::Gallery {
+        paths: list_dir!("assets/rma")
+            .into_iter()
+            .filter_map(|p| p.strip_suffix(".uasset").map(|p| p.to_string()))
+            .collect(),
+    };
 
-    let rma = read_rma(asset)?;
-
-    main::run(rma).await?;
+    main::run(mode).await?;
 
     Ok(())
 }

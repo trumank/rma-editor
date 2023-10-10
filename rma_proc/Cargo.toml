@@ -7,6 +7,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
+anyhow.workspace = true
 heck = "0.4.1"
 proc-macro2 = "1.0.68"
 quote = "1.0.33"

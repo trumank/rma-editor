@@ -1,3 +1,6 @@
+use std::path::Path;
+
+use anyhow::Result;
 use proc_macro2::Literal;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
@@ -128,6 +131,44 @@ pub fn derive_from_properties(input: proc_macro::TokenStream) -> proc_macro::Tok
                 })
             }
         }
+    };
+
+    proc_macro::TokenStream::from(expanded)
+}
+
+fn read_dir_recursive<P: AsRef<Path>>(root: &str, path: P, paths: &mut Vec<String>) -> Result<()> {
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let path = entry.path();
+        let metadata = std::fs::metadata(path.clone())?;
+        if metadata.is_file() {
+            let rel = path.strip_prefix(root)?.to_str().unwrap();
+            paths.push(rel.replace('\\', "/"));
+        } else if metadata.is_dir() {
+            read_dir_recursive(root, &path, paths)?;
+        } else {
+            panic!("{:?} is not a file or directory", entry);
+        }
+    }
+    Ok(())
+}
+
+#[proc_macro]
+pub fn list_dir(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let literal = input.to_string();
+    if !(literal.starts_with('"') && literal.ends_with('"') && literal.len() >= 2) {
+        panic!("expected string literal");
+    }
+
+    let path = &literal[1..literal.len() - 1];
+
+    let mut paths = vec![];
+    read_dir_recursive(path, path, &mut paths).unwrap();
+    paths.sort();
+    let paths = paths.iter().map(|p| Literal::string(p));
+
+    let expanded = quote! {
+        [#(#paths,)*]
     };
 
     proc_macro::TokenStream::from(expanded)
