@@ -1,6 +1,8 @@
-use rma_lib::{from_object_property, FromExport, FromProperties, FromProperty};
+use rma_lib::{
+    from_object_property, resolve_package_index, FromExport, FromProperties, FromProperty,
+};
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use serde::Serialize;
 use unreal_asset::exports::{ExportBaseTrait, ExportNormalTrait};
 use unreal_asset::properties::Property;
@@ -68,7 +70,7 @@ impl RoomFeature {
 
 impl<C: Seek + Read> FromExport<C> for RoomFeature {
     fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-        let export = asset.get_export(package_index).unwrap();
+        let export = resolve_package_index(asset, package_index)?;
         let name = asset
             .get_import(export.get_base_export().class_index)
             .unwrap()
@@ -149,7 +151,7 @@ pub struct FRandLinePoint {
 pub struct FloodFillPillar {
     #[serde(flatten)]
     pub base: RoomFeatureBase,
-    pub noise_override: Option<UFloodFillSettings>,
+    pub noise_override: (), // Option<UFloodFillSettings>,
     pub points: Vec<FRandLinePoint>,
     pub range_scale: FRandRange,
     pub noise_range_scale: FRandRange,
@@ -327,7 +329,7 @@ pub struct FRoomLinePoint {
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
 pub struct FLayeredNoise {
-    pub noise: UFloodFillSettings,
+    pub noise: (), // UFloodFillSettings,
     pub scale: f32,
 }
 
@@ -348,10 +350,10 @@ pub struct UFloodFillSettings {
 pub struct FloodFillLine {
     #[serde(flatten)]
     pub base: RoomFeatureBase,
-    pub wall_noise_override: Option<UFloodFillSettings>,
-    pub ceiling_noise_override: Option<UFloodFillSettings>,
-    pub flood_noise_override: Option<UFloodFillSettings>,
-    pub use_detailed_noise: bool,
+    pub wall_noise_override: (),    // Option<UFloodFillSettings>,
+    pub ceiling_noise_override: (), // Option<UFloodFillSettings>,
+    pub flood_noise_override: (),   // Option<UFloodFillSettings>,
+    pub use_detail_noise: bool,
     pub points: Vec<FRoomLinePoint>,
 }
 
@@ -396,7 +398,7 @@ pub struct SpawnActorFeature {
     pub location: FVector,
     pub actor_to_spawn: (), // TODO TSubclassOf<AActor>
     pub adjustment_direction: FVector,
-    pub adjustments: EItemAdjustmentType,
+    pub adjustment: EItemAdjustmentType,
     pub scale_min: FVector,
     pub scale_max: FVector,
     pub rotation_delta: FRotator,

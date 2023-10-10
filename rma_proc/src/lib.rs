@@ -58,7 +58,7 @@ pub fn derive_from_export(input: proc_macro::TokenStream) -> proc_macro::TokenSt
     let expanded = quote! {
         impl<C: Seek + Read> #impl_generics rma_lib::FromExport<C> for #name #ty_generics #where_clause {
             fn from_export(asset: &Asset<C>, package_index: PackageIndex) -> Result<Self> {
-                let export = asset.get_export(package_index).expect("package index points to valid export");
+                let export = ::rma_lib::resolve_package_index(asset, package_index)?;
                 let normal_export = export.get_normal_export().expect("export is a NormalExport");
                 let properties = &normal_export.properties;
 

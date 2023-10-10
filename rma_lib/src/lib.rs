@@ -5,11 +5,11 @@ use std::{
     io::{Read, Seek},
 };
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use unreal_asset::{
     properties::{Property, PropertyDataTrait},
     types::PackageIndex,
-    Asset,
+    Asset, Export,
 };
 
 pub fn from_object_property<C: Read + Seek, T: FromExport<C>>(
@@ -20,6 +20,15 @@ pub fn from_object_property<C: Read + Seek, T: FromExport<C>>(
         Property::ObjectProperty(property) => T::from_export(asset, property.value),
         _ => bail!("wrong property type"),
     }
+}
+
+pub fn resolve_package_index<C: Read + Seek>(
+    asset: &Asset<C>,
+    package_index: PackageIndex,
+) -> Result<&Export> {
+    asset
+        .get_export(package_index)
+        .with_context(|| format!("package index does not point to an export {package_index:?}"))
 }
 
 pub trait FromExport<C: Seek + Read> {
@@ -82,6 +91,12 @@ impl<C: Read + Seek, T: FromProperty<C>> FromProperty<C> for Vec<T> {
         match property {
             Property::ArrayProperty(property) => {
                 for value in &property.value {
+                    match value {
+                        Property::ObjectProperty(obj) if 0 == obj.value.index => {
+                            continue; // TODO hack to omit null objects from arrays
+                        }
+                        _ => {}
+                    }
                     values.push(T::from_property(asset, value)?);
                 }
             }

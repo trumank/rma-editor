@@ -345,3 +345,28 @@ pub async fn run(mode: AppMode) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use std::ffi::OsStr;
+
+    use anyhow::Context;
+    use rma::read_asset;
+
+    use super::*;
+
+    #[test]
+    fn test_read_all() -> Result<()> {
+        for path in std::fs::read_dir("../assets/rma")? {
+            let path = path?.path();
+            if path.extension() == Some(OsStr::new("uasset")) {
+                println!("{:?}", path.display());
+                let asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
+                let _rma = read_rma(asset)
+                    .with_context(|| format!("parsing asset {:?}", path.display()))?;
+            }
+        }
+
+        Ok(())
+    }
+}
