@@ -19,14 +19,14 @@ pub struct RoomFeatureBase {
 pub enum RoomFeature {
     FloodFillBox(FloodFillBox),
     FloodFillProceduralPillar,
-    SpawnTriggerFeature,
+    SpawnTriggerFeature(SpawnTriggerFeature),
     FloodFillPillar(FloodFillPillar),
     RandomSelector(RandomSelector),
     EntranceFeature(EntranceFeature),
     RandomSubRoomFeature,
     SpawnActorFeature(SpawnActorFeature),
     FloodFillLine(FloodFillLine),
-    ResourceFeature,
+    ResourceFeature(ResourceFeature),
     SubRoomFeature,
     DropPodCalldownLocationFeature(DropPodCalldownLocationFeature),
 }
@@ -36,14 +36,14 @@ impl RoomFeature {
         match self {
             RoomFeature::FloodFillBox(_) => "FloodFillBox",
             RoomFeature::FloodFillProceduralPillar => "FloodFillProceduralPillar",
-            RoomFeature::SpawnTriggerFeature => "SpawnTriggerFeature ",
+            RoomFeature::SpawnTriggerFeature(_) => "SpawnTriggerFeature ",
             RoomFeature::FloodFillPillar(_) => "FloodFillPillar",
             RoomFeature::RandomSelector(_) => "RandomSelector",
             RoomFeature::EntranceFeature(_) => "EntranceFeature",
             RoomFeature::RandomSubRoomFeature => "RandomSubRoomFeature",
             RoomFeature::SpawnActorFeature(_) => "SpawnActorFeature",
             RoomFeature::FloodFillLine(_) => "FloodFillLine",
-            RoomFeature::ResourceFeature => "ResourceFeature ",
+            RoomFeature::ResourceFeature(_) => "ResourceFeature ",
             RoomFeature::SubRoomFeature => "SubRoomFeature ",
             RoomFeature::DropPodCalldownLocationFeature(_) => "DropPodCalldownLocationFeature",
         }
@@ -52,14 +52,14 @@ impl RoomFeature {
         match self {
             RoomFeature::FloodFillBox(f) => &f.base,
             RoomFeature::FloodFillProceduralPillar => todo!(),
-            RoomFeature::SpawnTriggerFeature => todo!(),
+            RoomFeature::SpawnTriggerFeature(f) => &f.base,
             RoomFeature::FloodFillPillar(f) => &f.base,
             RoomFeature::RandomSelector(f) => &f.base,
             RoomFeature::EntranceFeature(f) => &f.base,
             RoomFeature::RandomSubRoomFeature => todo!(),
             RoomFeature::SpawnActorFeature(f) => &f.base,
             RoomFeature::FloodFillLine(f) => &f.base,
-            RoomFeature::ResourceFeature => todo!(),
+            RoomFeature::ResourceFeature(f) => &f.base,
             RoomFeature::SubRoomFeature => todo!(),
             RoomFeature::DropPodCalldownLocationFeature(f) => &f.base,
         }
@@ -79,6 +79,9 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
             "FloodFillBox" => {
                 RoomFeature::FloodFillBox(FromExport::from_export(asset, package_index)?)
             }
+            "SpawnTriggerFeature" => {
+                RoomFeature::SpawnTriggerFeature(FromExport::from_export(asset, package_index)?)
+            }
             "FloodFillPillar" => {
                 RoomFeature::FloodFillPillar(FromExport::from_export(asset, package_index)?)
             }
@@ -93,6 +96,9 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
             }
             "FloodFillLine" => {
                 RoomFeature::FloodFillLine(FromExport::from_export(asset, package_index)?)
+            }
+            "ResourceFeature" => {
+                RoomFeature::ResourceFeature(FromExport::from_export(asset, package_index)?)
             }
             "DropPodCalldownLocationFeature" => RoomFeature::DropPodCalldownLocationFeature(
                 FromExport::from_export(asset, package_index)?,
@@ -113,6 +119,15 @@ pub struct FloodFillBox {
     pub rotation: FRotator,
     pub is_carver: bool,
     pub noise_range: f32,
+}
+
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
+pub struct SpawnTriggerFeature {
+    #[serde(flatten)]
+    pub base: RoomFeatureBase,
+    pub trigger_class: (), //Option<TSubclassOf<AActor>>
+    pub transform: FTransform,
+    pub message: FName,
 }
 
 #[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
@@ -190,6 +205,50 @@ impl<C: Read + Seek> FromProperty<C> for FRotator {
                 }),
                 _ => bail!("{property:?}"),
             },
+            _ => bail!("{property:?}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, FromProperty, FromProperties)]
+pub struct FTransform {
+    pub translation: FVector,
+    pub rotation: FQuat,
+    pub Scale3D: FVector,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize)]
+pub struct FQuat {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl<C: Read + Seek> FromProperty<C> for FQuat {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::StructProperty(property) => match &property.value[0] {
+                Property::QuatProperty(property) => Ok(Self {
+                    x: property.value.x.0 as f32,
+                    y: property.value.y.0 as f32,
+                    z: property.value.z.0 as f32,
+                    w: property.value.z.0 as f32,
+                }),
+                _ => bail!("{property:?}"),
+            },
+            _ => bail!("{property:?}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct FName(String);
+
+impl<C: Read + Seek> FromProperty<C> for FName {
+    fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        match property {
+            Property::NameProperty(property) => Ok(Self(property.value.get_owned_content())),
             _ => bail!("{property:?}"),
         }
     }
@@ -294,6 +353,15 @@ pub struct FloodFillLine {
     pub flood_noise_override: Option<UFloodFillSettings>,
     pub use_detailed_noise: bool,
     pub points: Vec<FRoomLinePoint>,
+}
+
+#[derive(Debug, Default, Serialize, FromExport, FromProperties)]
+pub struct ResourceFeature {
+    #[serde(flatten)]
+    pub base: RoomFeatureBase,
+    pub location: FVector,
+    pub resource: (), // Option<UResourceData>,
+    pub base_amount: f32,
 }
 
 #[derive(Debug, Default, Serialize)]
