@@ -23,13 +23,12 @@ use rma::RMAContext;
 
 // Entry point for non-wasm
 #[cfg(not(target_arch = "wasm32"))]
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let path = std::env::args()
         .nth(1)
         .expect("expected path to an RMA .uasset");
 
-    run(AppMode::Editor { path }).await
+    run(AppMode::Editor { path })
 }
 
 fn iter_features<F, T>(features: &[RoomFeature], path: &mut Vec<usize>, f: &mut F)
@@ -74,7 +73,7 @@ fn build_primitives(
     primitives
 }
 
-pub async fn run(mode: AppMode) -> Result<()> {
+pub fn run(mode: AppMode) -> Result<()> {
     let mut rma = match &mode {
         AppMode::Editor { path } => {
             use rma::{read_asset, read_rma};
@@ -86,9 +85,10 @@ pub async fn run(mode: AppMode) -> Result<()> {
         AppMode::Gallery { paths: _ } => None,
     };
 
-    use async_executor::LocalExecutor;
+    use futures::task::LocalSpawnExt;
 
-    let ex = LocalExecutor::new();
+    let mut ex = futures::executor::LocalPool::new();
+    let spawner = ex.spawner();
 
     let window = Window::new(WindowSettings {
         title: "RMA Editor".to_string(),
@@ -156,7 +156,7 @@ pub async fn run(mode: AppMode) -> Result<()> {
     let mut task_handles = vec![];
 
     window.render_loop(move |mut frame_input| {
-        ex.try_tick();
+        ex.run_until_stalled();
 
         if let Ok(new_rma) = rx.try_recv() {
             rma = Some(new_rma);
@@ -238,7 +238,7 @@ pub async fn run(mode: AppMode) -> Result<()> {
 
                                                             let name = room.to_string();
                                                             let tx = tx.clone();
-                                                            let task = ex.spawn(async move {
+                                                            let task = spawner.spawn_local(async move {
                                                                 let name = name;
                                                                 let uasset = three_d_asset::io::load_async(&[format!("rma/{name}.uasset")])
                                                                     .await

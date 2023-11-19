@@ -85,7 +85,7 @@ pub async fn wasm_main() -> Result<()> {
             .collect(),
     };
 
-    main::run(mode).await?;
+    main::run(mode)?;
 
     Ok(())
 }
