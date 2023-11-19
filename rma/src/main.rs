@@ -13,8 +13,6 @@ use std::collections::HashMap;
 use std::io::Cursor;
 use std::ops::Deref;
 use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
 
 use rma::rma::RoomFeature;
 use rma::rma::RoomGenerator;
@@ -76,8 +74,7 @@ fn build_primitives(
 pub fn run(mode: AppMode) -> Result<()> {
     let mut rma = match &mode {
         AppMode::Editor { path } => {
-            use rma::{read_asset, read_rma};
-            use unreal_asset::engine_version::EngineVersion;
+            use rma::read_asset;
 
             let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
             Some(read_rma(asset)?)
@@ -231,7 +228,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                             egui::ScrollArea::vertical().show(ui, |ui| {
                                                 ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                                                     for room in rooms {
-                                                        let mut selected = selected_room.as_ref() == Some(room);
+                                                        let selected = selected_room.as_ref() == Some(room);
                                                         if ui.selectable_label(selected, room).clicked() {
                                                             selected_room = Some(room.to_string());
                                                             info!("{:?}", selected_room);
@@ -239,7 +236,6 @@ pub fn run(mode: AppMode) -> Result<()> {
                                                             let name = room.to_string();
                                                             let tx = tx.clone();
                                                             let task = spawner.spawn_local(async move {
-                                                                let name = name;
                                                                 let uasset = three_d_asset::io::load_async(&[format!("rma/{name}.uasset")])
                                                                     .await
                                                                     .unwrap();
