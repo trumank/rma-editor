@@ -12,6 +12,10 @@ license = "MIT OR Apache-2.0"
 version = "0.1.0"
 edition = "2021"
 
+[profile.dev]
+opt-level = 3
+lto = "off"
+
 [workspace.dependencies]
 anyhow = { version = "1.0.75", features = ["backtrace"] }
 unreal_asset = { git = "https://github.com/trumank/unrealmodding", branch = "patches" }

@@ -1,5 +1,6 @@
 use three_d::{
-    BoundingBox, CpuMaterial, CpuMesh, Gm, InstancedMesh, Instances, Mesh, Object, PhysicalMaterial,
+    egui, BoundingBox, CpuMaterial, CpuMesh, Gm, InstancedMesh, Instances, Mesh, Object,
+    PhysicalMaterial,
 };
 use three_d_asset::{vec2, vec3, Angle, InnerSpace, Mat4, Quat, Radians, Srgba, Vector3};
 
@@ -11,8 +12,27 @@ use crate::{
     RMAContext,
 };
 
+trait ChangedTrait {
+    fn c(&self, changed: &mut bool);
+}
+impl ChangedTrait for egui::Response {
+    fn c(&self, changed: &mut bool) {
+        if self.changed() {
+            *changed = true;
+        }
+    }
+}
+impl ChangedTrait for bool {
+    fn c(&self, changed: &mut bool) {
+        if *self {
+            *changed = true;
+        }
+    }
+}
+
 pub trait RoomFeatureTrait {
     fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>>;
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool;
 }
 
 impl From<FVector> for Vector3<f32> {
@@ -42,6 +62,9 @@ impl RoomFeatureTrait for FloodFillBox {
 
         vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
     }
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+        false
+    }
 }
 
 impl RoomFeatureTrait for FloodFillPillar {
@@ -65,6 +88,10 @@ impl RoomFeatureTrait for FloodFillPillar {
             ),
             ctx.wireframe_material.clone(),
         ))]
+    }
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+        ui.label("FloodFillPillar");
+        false
     }
 }
 
@@ -91,6 +118,9 @@ impl RoomFeatureTrait for SpawnActorFeature {
                 * Mat4::from_angle_y(-Radians::turn_div_4()),
         );
         vec![Box::new(obj)]
+    }
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+        todo!()
     }
 }
 
@@ -191,6 +221,23 @@ impl RoomFeatureTrait for FloodFillLine {
             ctx.wireframe_material.clone(),
         ))]
     }
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
+
+        egui::Grid::new("grid")
+            .num_columns(2)
+            .spacing([40.0, 4.0])
+            .striped(true)
+            .show(ui, |ui| {
+                for (i, point) in self.points.iter_mut().enumerate() {
+                    ui.label(format!("point {i}"));
+                    vector3(ui, &mut point.location).c(&mut changed);
+                    ui.end_row();
+                }
+            });
+
+        changed
+    }
 }
 
 impl RoomFeatureTrait for EntranceFeature {
@@ -238,6 +285,34 @@ impl RoomFeatureTrait for EntranceFeature {
         );
         vec![Box::new(sphere)]
     }
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut changed = false;
+
+        egui::Grid::new("grid")
+            .num_columns(2)
+            .spacing([40.0, 4.0])
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("location");
+                vector3(ui, &mut self.location).c(&mut changed);
+                ui.end_row();
+            });
+
+        changed
+    }
+}
+
+fn vector3(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
+    let mut changed = false;
+    ui.horizontal(|ui| {
+        ui.add(egui::DragValue::new(&mut vec.x).speed(1.))
+            .c(&mut changed);
+        ui.add(egui::DragValue::new(&mut vec.y).speed(1.))
+            .c(&mut changed);
+        ui.add(egui::DragValue::new(&mut vec.z).speed(1.))
+            .c(&mut changed);
+    });
+    changed
 }
 
 impl RoomFeatureTrait for DropPodCalldownLocationFeature {
@@ -263,5 +338,8 @@ impl RoomFeatureTrait for DropPodCalldownLocationFeature {
                 * Mat4::from_angle_y(Radians::turn_div_4()),
         );
         vec![Box::new(sphere)]
+    }
+    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+        todo!()
     }
 }
