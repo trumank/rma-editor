@@ -39,6 +39,7 @@ where
         f(feat, path);
         iter_features(&feat.base().room_features, path, f);
     }
+    path.pop();
 }
 
 fn build_primitives(
@@ -69,6 +70,42 @@ fn build_primitives(
         _ => {}
     });
     primitives
+}
+
+trait RoomFeatureExt {
+    fn ui(&mut self, ui: &mut egui::Ui) -> bool;
+    fn room_features_mut(&mut self) -> &mut Vec<RoomFeature>;
+}
+
+impl RoomFeatureExt for RoomFeature {
+    fn ui(&mut self, ui: &mut egui::Ui) -> bool {
+        match self {
+            RoomFeature::FloodFillBox(f) => f.editor(ui),
+            RoomFeature::FloodFillPillar(f) => f.editor(ui),
+            RoomFeature::SpawnActorFeature(f) => f.editor(ui),
+            RoomFeature::FloodFillLine(f) => f.editor(ui),
+            RoomFeature::EntranceFeature(f) => f.editor(ui),
+            RoomFeature::DropPodCalldownLocationFeature(f) => f.editor(ui),
+            _ => todo!(),
+        }
+    }
+    fn room_features_mut(&mut self) -> &mut Vec<RoomFeature> {
+        match self {
+            RoomFeature::FloodFillBox(f) => &mut f.base.room_features,
+            RoomFeature::FloodFillPillar(f) => &mut f.base.room_features,
+            RoomFeature::SpawnActorFeature(f) => &mut f.base.room_features,
+            RoomFeature::FloodFillLine(f) => &mut f.base.room_features,
+            RoomFeature::EntranceFeature(f) => &mut f.base.room_features,
+            RoomFeature::DropPodCalldownLocationFeature(f) => &mut f.base.room_features,
+            RoomFeature::FloodFillProceduralPillar => todo!(),
+            RoomFeature::SpawnTriggerFeature(f) => &mut f.base.room_features,
+            RoomFeature::RandomSelector(f) => &mut f.base.room_features,
+            RoomFeature::RandomSubRoomFeature => todo!(),
+            RoomFeature::ResourceFeature(f) => &mut f.base.room_features,
+            RoomFeature::SubRoomFeature => todo!(),
+
+        }
+    }
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
@@ -148,6 +185,7 @@ pub fn run(mode: AppMode) -> Result<()> {
     let mut gui = three_d::GUI::new(&context);
     let mut states = HashMap::<Vec<usize>, State>::new();
     let mut selected_room = None;
+    let mut selected_feature: Vec<usize> = vec![];
     let (tx, rx) = mpsc::channel();
 
     let mut task_handles = vec![];
@@ -186,6 +224,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                             path: &mut Vec<usize>,
                             f: &[RoomFeature],
                             states: &mut HashMap<Vec<usize>, State>,
+                            selected_feature: &mut Vec<usize>,
                         ) {
                             path.push(0);
                             for (i, f) in f.iter().enumerate() {
@@ -200,11 +239,16 @@ pub fn run(mode: AppMode) -> Result<()> {
                                 .show_header(ui, |ui| {
                                     ui.checkbox(
                                         &mut states.entry(path.clone()).or_default().visible,
-                                        f.name(),
-                                    )
+                                        ""
+                                    );
+                                    let mut checked = path == selected_feature;
+                                    if ui.toggle_value(&mut checked, f.name()).changed() && checked {
+                                        *selected_feature = path.clone();
+                                    }
                                 })
-                                .body(|ui| features(ui, path, &f.base().room_features, states));
+                                .body(|ui| features(ui, path, &f.base().room_features, states, selected_feature));
                             }
+                            path.pop();
                         }
 
                         let rooms = match &mode {
@@ -212,13 +256,17 @@ pub fn run(mode: AppMode) -> Result<()> {
                             AppMode::Editor { .. } => None,
                         };
 
-                        let strip = egui_extras::StripBuilder::new(ui);
-                        let strip = if rooms.is_some() {
-                            strip.size(egui_extras::Size::relative(0.5))
-                            .size(egui_extras::Size::relative(0.5))
-                        } else {
-                            strip.size(egui_extras::Size::relative(1.))
-                        };
+                        let mut strip = egui_extras::StripBuilder::new(ui);
+                        let mut num_cells = 1;
+                        if rooms.is_some() {
+                            num_cells += 1;
+                        }
+                        if !selected_feature.is_empty() {
+                            num_cells += 1;
+                        }
+                        for _ in 0..num_cells {
+                            strip = strip.size(egui_extras::Size::relative(1. / num_cells as f32));
+                        }
                         strip.vertical(|mut strip| {
                             if let Some(rooms) = rooms {
                                 strip.cell(|ui| {
@@ -263,26 +311,60 @@ pub fn run(mode: AppMode) -> Result<()> {
                                     });
                                 });
                             }
+                            let mut deferred_select = vec![];
+                            strip.cell(|ui| {
+                                ui.push_id("features", |ui| {
+                                    ui.group(|ui| {
+                                        ui.heading("Room Features");
+                                        egui::ScrollArea::vertical().show(ui, |ui| {
+                                            if let Some(rma) = &rma {
+                                                let mut path = vec![];
+                                                features(
+                                                    ui,
+                                                    &mut path,
+                                                    &rma.room_features,
+                                                    &mut states,
+                                                    &mut deferred_select,
+                                                );
+                                            }
+                                            ui.allocate_space(ui.available_size());
+                                        });
+                                    });
+                                });
+                            });
+                            let mut path_iter = selected_feature.iter();
+                            if let Some(first) = path_iter.next() {
                                 strip.cell(|ui| {
-                                    ui.push_id("features", |ui| {
+                                    ui.push_id("edit feature", |ui| {
                                         ui.group(|ui| {
-                                            ui.heading("Room Features");
+                                            ui.heading("Edit Feature");
                                             egui::ScrollArea::vertical().show(ui, |ui| {
-                                                if let Some(rma) = &rma {
-                                                    let mut path = vec![];
-                                                    features(
-                                                        ui,
-                                                        &mut path,
-                                                        &rma.room_features,
-                                                        &mut states,
-                                                    );
+                                                let Some(rma) = &mut rma else { return };
+                                                let mut feature = &mut rma.room_features[*first];
+                                                for feature_index in path_iter {
+                                                    feature = &mut feature.room_features_mut()[*feature_index];
                                                 }
+                                                let changed = feature.ui(ui);
+
+                                                if changed {
+                                                    //states.clear();
+                                                    primitives = Some(build_primitives(&RMAContext {
+                                                        context: &context,
+                                                        wireframe_material: wireframe_material.clone(),
+                                                        wireframe_mesh: wireframe_mesh.clone(),
+                                                    }, rma));
+                                                }
+
                                                 ui.allocate_space(ui.available_size());
                                             });
                                         });
                                     });
                                 });
-                            });
+                            }
+                            if !deferred_select.is_empty() {
+                                selected_feature = deferred_select;
+                            }
+                        });
                     });
             },
         );
