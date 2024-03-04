@@ -246,7 +246,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                                                 let version = EngineVersion::VER_UE4_27;
                                                                 let uasset = Cursor::new(uasset.get("").unwrap());
                                                                 let uexp = Cursor::new(uexp.get("").unwrap());
-                                                                let asset = Asset::new(uasset, Some(uexp), version, None).unwrap();
+                                                                let asset = Asset::new(uasset, Some(uexp), version, None, false).unwrap();
 
                                                                 let rma = read_rma(asset).unwrap();
 
@@ -334,7 +334,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                     })),
                 &[&light0, &light1],
             )
-            .write(|| gui.render());
+            .write(|| gui.render()).unwrap();
 
         FrameOutput::default()
     });

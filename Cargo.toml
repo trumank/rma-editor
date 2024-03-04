@@ -13,5 +13,5 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-anyhow = { version = "1.0.75", features = ["backtrace"] }
+anyhow = { version = "1.0.80", features = ["backtrace"] }
 unreal_asset = { git = "https://github.com/trumank/unrealmodding", branch = "patches" }

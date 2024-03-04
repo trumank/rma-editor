@@ -9,6 +9,6 @@ proc-macro = true
 [dependencies]
 anyhow.workspace = true
 heck = "0.4.1"
-proc-macro2 = "1.0.68"
-quote = "1.0.33"
-syn = "2.0.38"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = "2.0.52"

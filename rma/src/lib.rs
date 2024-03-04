@@ -36,7 +36,7 @@ pub fn read_asset<P: AsRef<Path>>(
 ) -> Result<Asset<Cursor<Vec<u8>>>> {
     let uasset = Cursor::new(fs::read(&path)?);
     let uexp = Cursor::new(fs::read(path.as_ref().with_extension("uexp"))?);
-    let asset = Asset::new(uasset, Some(uexp), version, None)?;
+    let asset = Asset::new(uasset, Some(uexp), version, None, false)?;
 
     Ok(asset)
 }
