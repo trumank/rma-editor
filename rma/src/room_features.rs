@@ -224,20 +224,71 @@ impl RoomFeatureTrait for FloodFillLine {
     fn editor(&mut self, ui: &mut egui::Ui) -> bool {
         let mut changed = false;
 
-        egui::Grid::new("grid")
-            .num_columns(2)
-            .spacing([40.0, 4.0])
-            .striped(true)
-            .show(ui, |ui| {
-                for (i, point) in self.points.iter_mut().enumerate() {
-                    ui.label(format!("point {i}"));
-                    vector3(ui, &mut point.location).c(&mut changed);
-                    ui.end_row();
-                }
+        list_editor(ui, &mut self.points, |ui, point| {
+            let mut changed = false;
+            ui.horizontal(|ui| {
+                vector3(ui, &mut point.location).c(&mut changed);
+                ui.add(egui::DragValue::new(&mut point.h_range).speed(1.))
+                    .c(&mut changed);
             });
+            changed
+            /*
+            pub h_range: f32,
+            pub v_range: f32,
+            pub cieling_noise_range: f32,
+            pub wall_noise_range: f32,
+            pub floor_noise_range: f32,
+            pub cielingheight: f32,
+            pub height_scale: f32,
+            pub floor_depth: f32,
+            pub floor_angle: f32,
+            */
+        })
+        .c(&mut changed);
 
         changed
     }
+}
+
+fn list_editor<T, F>(ui: &mut egui::Ui, items: &mut Vec<T>, mut show_item: F) -> bool
+where
+    T: Default + Clone,
+    F: FnMut(&mut egui::Ui, &mut T) -> bool,
+{
+    let mut changed = false;
+
+    let mut rm = None;
+    let mut dup = None;
+    egui::Grid::new("grid")
+        .num_columns(2)
+        .spacing([40.0, 4.0])
+        .striped(true)
+        .show(ui, |ui| {
+            for (i, point) in items.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
+                    if ui.button(" - ").clicked() {
+                        rm = Some(i);
+                    }
+                    if ui.button(" + ").clicked() {
+                        dup = Some(i);
+                    }
+                    ui.label(format!("{i}"));
+                });
+                show_item(ui, point).c(&mut changed);
+                ui.end_row();
+            }
+        });
+
+    if let Some(rm) = rm {
+        items.remove(rm);
+        changed = true;
+    }
+    if let Some(dup) = dup {
+        items.insert(dup, items[dup].clone());
+        changed = true;
+    }
+
+    changed
 }
 
 impl RoomFeatureTrait for EntranceFeature {

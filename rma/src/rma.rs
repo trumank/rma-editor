@@ -313,7 +313,7 @@ pub struct EntranceFeature {
     pub priority: ECaveEntrancePriority,
 }
 
-#[derive(Debug, Default, Serialize, FromProperty, FromProperties)]
+#[derive(Debug, Default, Clone, Serialize, FromProperty, FromProperties)]
 pub struct FRoomLinePoint {
     pub location: FVector,
     pub h_range: f32,
