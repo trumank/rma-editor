@@ -113,7 +113,7 @@ pub fn run(mode: AppMode) -> Result<()> {
             use rma::read_asset;
 
             let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
-            Some(read_rma(asset)?)
+            Some((read_rma(&asset)?, asset))
         }
         AppMode::Gallery { paths: _ } => None,
     };
@@ -140,6 +140,7 @@ pub fn run(mode: AppMode) -> Result<()> {
         100000.0,
     );
     let mut control = OrbitControl::new(*camera.target(), 1.0, 100000.0);
+    camera.mirror_in_xz_plane();
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -165,7 +166,7 @@ pub fn run(mode: AppMode) -> Result<()> {
         wireframe_mesh: wireframe_mesh.clone(),
     };
 
-    let mut primitives = rma.as_ref().map(|rma| build_primitives(&rma_ctx, rma));
+    let mut primitives = rma.as_ref().map(|rma| build_primitives(&rma_ctx, &rma.0));
 
     let axes = Axes::new(&context, 10., 200.0);
 
@@ -199,7 +200,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                 context: &context,
                 wireframe_material: wireframe_material.clone(),
                 wireframe_mesh: wireframe_mesh.clone(),
-            }, rma));
+            }, &rma.0));
         }
 
         let panel_width = 300.0;
@@ -218,6 +219,11 @@ pub fn run(mode: AppMode) -> Result<()> {
                     .show(gui_context, |ui| {
                         use three_d::egui::*;
                         ui.heading("Debug Panel");
+                        if let Some(rma) = rma.as_mut() {
+                            if ui.button("save").clicked() {
+                                save(&mut rma.1, &rma.0).unwrap();
+                            }
+                        }
                         fn features(
                             ui: &mut Ui,
                             path: &mut Vec<usize>,
@@ -294,14 +300,14 @@ pub fn run(mode: AppMode) -> Result<()> {
                                                                     .unwrap();
 
                                                                 let version = EngineVersion::VER_UE4_27;
-                                                                let uasset = Cursor::new(uasset.get("").unwrap());
-                                                                let uexp = Cursor::new(uexp.get("").unwrap());
+                                                                let uasset = Cursor::new(uasset.get("").unwrap().to_vec());
+                                                                let uexp = Cursor::new(uexp.get("").unwrap().to_vec());
                                                                 let asset = Asset::new(uasset, Some(uexp), version, None, false).unwrap();
 
-                                                                let rma = read_rma(asset).unwrap();
+                                                                let rma = read_rma(&asset).unwrap();
 
                                                                 info!("{rma:?}");
-                                                                tx.send(rma).unwrap();
+                                                                tx.send((rma, asset)).unwrap();
                                                             });
                                                             task_handles.push(task);
                                                         }
@@ -324,7 +330,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                                 features(
                                                     ui,
                                                     &mut path,
-                                                    &rma.room_features,
+                                                    &rma.0.room_features,
                                                     &mut states,
                                                     &mut selected_feature,
                                                     &mut deferred_select,
@@ -343,7 +349,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                             ui.heading("Edit Feature");
                                             egui::ScrollArea::vertical().show(ui, |ui| {
                                                 let Some(rma) = &mut rma else { return };
-                                                let mut feature = &mut rma.room_features[*first];
+                                                let mut feature = &mut rma.0.room_features[*first];
                                                 for feature_index in path_iter {
                                                     feature = &mut feature.room_features_mut()[*feature_index];
                                                 }
@@ -355,7 +361,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                                         context: &context,
                                                         wireframe_material: wireframe_material.clone(),
                                                         wireframe_mesh: wireframe_mesh.clone(),
-                                                    }, rma));
+                                                    }, &rma.0));
                                                 }
 
                                                 ui.allocate_space(ui.available_size());
@@ -427,6 +433,42 @@ pub fn run(mode: AppMode) -> Result<()> {
     Ok(())
 }
 
+fn save<C: std::io::Read + std::io::Seek>(asset: &mut Asset<C>, rma: &RoomGenerator) -> Result<()> {
+    use rma_lib::{CtxSer, NameCounter, ToExport as _};
+    use unreal_asset::{exports::ExportBaseTrait, types::PackageIndex};
+
+    asset.asset_data.exports.clear();
+    asset.imports.clear();
+
+    let mut name_counter = NameCounter::default();
+    let pi = dbg!(rma.to_export(&mut CtxSer::new(asset, &mut name_counter))?);
+
+    let name = asset.add_fname("RMA_CarverA");
+    asset
+        .asset_data
+        .exports
+        .last_mut()
+        .unwrap()
+        .get_base_export_mut()
+        .object_name = name;
+
+    for (i, export) in asset.asset_data.exports.iter_mut().enumerate() {
+        let i = PackageIndex::from_export(i as i32).unwrap();
+        if i != pi {
+            let base = export.get_base_export_mut();
+            base.outer_index = pi;
+            base.create_before_create_dependencies.push(pi);
+        }
+    }
+
+    let new_path = std::path::Path::new("RMA_CarverA.uasset");
+    asset.write_data(
+        &mut std::fs::File::create(new_path)?,
+        Some(&mut std::fs::File::create(new_path.with_extension("uexp"))?),
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use std::ffi::OsStr;
@@ -443,7 +485,7 @@ mod test {
             if path.extension() == Some(OsStr::new("uasset")) {
                 println!("{:?}", path.display());
                 let asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
-                let _rma = read_rma(asset)
+                let _rma = read_rma(&asset)
                     .with_context(|| format!("parsing asset {:?}", path.display()))?;
                 println!("{_rma:?}");
             }
@@ -466,7 +508,7 @@ mod test {
 
         dbg!(&asset.asset_data.exports);
 
-        let _rma = read_rma(asset)?;
+        let _rma = read_rma(&asset)?;
         println!("{_rma:#?}");
 
         asset_stuff::asdf(&mut asset_orig, &_rma)?;

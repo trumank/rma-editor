@@ -41,7 +41,7 @@ pub fn read_asset<P: AsRef<Path>>(
     Ok(asset)
 }
 
-pub fn read_rma<C: Read + Seek>(asset: Asset<C>) -> Result<RoomGenerator> {
+pub fn read_rma<C: Read + Seek>(asset: &Asset<C>) -> Result<RoomGenerator> {
     let root = asset
         .asset_data
         .exports
