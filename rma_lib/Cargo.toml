@@ -7,3 +7,4 @@ edition = "2021"
 unreal_asset.workspace = true
 rma_proc = { path = "../rma_proc" }
 anyhow.workspace = true
+ordered-float = { version = "4.2.0", features = ["serde"] }

@@ -41,6 +41,41 @@ pub fn derive_from_property(input: proc_macro::TokenStream) -> proc_macro::Token
     proc_macro::TokenStream::from(expanded)
 }
 
+#[proc_macro_derive(ToProperty)]
+pub fn derive_to_property(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = input.ident;
+
+    let generics = add_trait_bounds(input.generics);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let literal = Literal::string(&name.to_string()[1..]);
+
+    let expanded = quote! {
+        impl<C: Seek + Read> #impl_generics rma_lib::ToProperty<C> for #name #ty_generics #where_clause {
+            fn get_type() -> Option<&'static str> {
+                Some("StructProperty") // TODO actually?
+            }
+            fn to_property(&self, ctx: &mut CtxSer<C>, name: ::unreal_asset::types::FName, ancestry: ::unreal_asset::unversioned::Ancestry) -> Result<Option<Property>> {
+                let properties = ::rma_lib::ToProperties::to_properties(self, ctx, ancestry.clone())?;
+                Ok(Some(::unreal_asset::properties::struct_property::StructProperty {
+                    name,
+                    ancestry,
+                    struct_type: Some(ctx.asset.add_fname(#literal)),
+                    struct_guid: Some(Default::default()),
+                    property_guid: None,
+                    duplication_index: 0,
+                    serialize_none: true,
+                    value: properties,
+                }.into()))
+            }
+        }
+    };
+
+    proc_macro::TokenStream::from(expanded)
+}
+
 #[proc_macro_derive(FromExport)]
 pub fn derive_from_export(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -68,6 +103,80 @@ pub fn derive_from_export(input: proc_macro::TokenStream) -> proc_macro::TokenSt
         impl<C: Seek + Read> #impl_generics rma_lib::FromProperty<C> for #name #ty_generics #where_clause {
             fn from_property(asset: &Asset<C>, property: &Property) -> Result<Self> {
                 rma_lib::from_object_property(asset, property)
+            }
+        }
+    };
+
+    proc_macro::TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(ToExport)]
+pub fn derive_to_export(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = input.ident;
+
+    let mut generics = input.generics;
+    for param in &mut generics.params {
+        if let GenericParam::Type(ref mut type_param) = *param {
+            type_param.bounds.push(parse_quote!(rma_lib::FromProperty));
+        }
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let expanded = quote! {
+        impl<C: Seek + Read> #impl_generics rma_lib::ToExport<C> for #name #ty_generics #where_clause {
+            fn to_export(&self, ctx: &mut ::rma_lib::CtxSer<C>) -> Result<PackageIndex> {
+                let ancestry = ::unreal_asset::unversioned::Ancestry::new(ctx.asset.add_fname("TODO"));
+
+                let (
+                    mut base_export,
+                    properties,
+                    serialization_before_create_dependencies,
+                    new_exports,
+                ) = {
+                    let mut new_ctx = ::rma_lib::CtxSer::new(ctx.asset, ctx.name_counter);
+                    (
+                        ::rma_lib::BaseExportGetter::base_export(self, &mut new_ctx)?,
+                        ::rma_lib::ToProperties::to_properties(self, &mut new_ctx, ancestry)?,
+                        new_ctx.serialization_before_create_dependencies,
+                        new_ctx.new_exports,
+                    )
+                };
+
+                let pi = unreal_asset::types::PackageIndex {
+                    index: ctx.asset.asset_data.exports.len() as i32 + 1
+                };
+
+                base_export.serialization_before_create_dependencies.extend(serialization_before_create_dependencies);
+                base_export.create_before_serialization_dependencies.extend(new_exports);
+
+                ctx.new_exports.push(pi);
+
+                ctx.asset.asset_data.exports.push(::unreal_asset::exports::NormalExport {
+                    base_export,
+                    extras: vec![0, 0, 0, 0],
+                    properties,
+                }.into());
+
+                Ok(pi)
+            }
+        }
+        impl<C: Seek + Read> #impl_generics rma_lib::ToProperty<C> for #name #ty_generics #where_clause {
+            fn get_type() -> Option<&'static str> {
+                todo!("ToExport get_type");
+            }
+            fn to_property(&self, ctx: &mut ::rma_lib::CtxSer<C>, name: ::unreal_asset::types::FName, ancestry: ::unreal_asset::unversioned::Ancestry) -> Result<Option<Property>> {
+                Ok(Some(
+                    ::unreal_asset::properties::object_property::ObjectProperty {
+                        name,
+                        ancestry,
+                        property_guid: None,
+                        duplication_index: 0,
+                        value: self.to_export(ctx)?,
+                    }
+                    .into(),
+                ))
             }
         }
     };
@@ -129,6 +238,74 @@ pub fn derive_from_properties(input: proc_macro::TokenStream) -> proc_macro::Tok
                 Ok(Self {
                     #members
                 })
+            }
+        }
+    };
+
+    proc_macro::TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(ToProperties)]
+pub fn derive_to_properties(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let name = input.ident;
+
+    let mut generics = input.generics;
+    for param in &mut generics.params {
+        if let GenericParam::Type(ref mut type_param) = *param {
+            type_param.bounds.push(parse_quote!(rma_lib::FromProperty));
+        }
+    }
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let mut base = None;
+
+    let members = match input.data {
+        Data::Struct(ref data) => match data.fields {
+            Fields::Named(ref fields) => {
+                use heck::ToPascalCase;
+
+                let recurse = fields.named.iter().filter_map(|f| {
+                    let name = &f.ident;
+                    let name_str = name.as_ref().expect("identifier has a name").to_string();
+                    let literal = Literal::string(&name_str.to_pascal_case());
+
+                    if name_str == "base" {
+                        base = Some(quote_spanned! {f.span()=>
+                            props.extend(::rma_lib::ToProperties::to_properties(&self.#name, ctx, ancestry.clone())?);
+                        });
+                        None
+                    } else {
+                        Some(quote_spanned! {f.span()=>
+                            let name = ctx.asset.add_fname(#literal);
+                            if let Some(next) = rma_lib::ToProperty::to_property(&self.#name, ctx, name, ancestry.clone())? {
+                                props.push(next);
+                            }
+                        })
+                    }
+                });
+                quote! {
+                    #(#recurse)*
+                }
+            }
+            Fields::Unnamed(ref _fields) => {
+                unimplemented!();
+            }
+            Fields::Unit => {
+                unimplemented!();
+            }
+        },
+        Data::Enum(_) | Data::Union(_) => unimplemented!(),
+    };
+
+    let expanded = quote! {
+        impl<C: Seek + Read> #impl_generics ::rma_lib::ToProperties<C> for #name #ty_generics #where_clause {
+            fn to_properties(&self, ctx: &mut ::rma_lib::CtxSer<C>, ancestry: ::unreal_asset::unversioned::Ancestry) -> Result<Vec<::unreal_asset::properties::Property>> {
+                let mut props: Vec<::unreal_asset::properties::Property> = vec![];
+                #members
+                #base
+                Ok(props)
             }
         }
     };

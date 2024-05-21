@@ -37,7 +37,7 @@ pub trait RoomFeatureTrait {
 
 impl From<FVector> for Vector3<f32> {
     fn from(val: FVector) -> Self {
-        vec3(val.x, val.y, val.z)
+        vec3(*val.x, *val.y, *val.z)
     }
 }
 
@@ -57,7 +57,7 @@ impl RoomFeatureTrait for FloodFillBox {
         let mut mesh = BoundingBox::new(ctx.context, CpuMesh::cube().compute_aabb());
         mesh.set_transformation(
             Mat4::from_translation(self.position.into())
-                * Mat4::from_nonuniform_scale(self.extends.x, self.extends.y, self.extends.z),
+                * Mat4::from_nonuniform_scale(*self.extends.x, *self.extends.y, *self.extends.z),
         );
 
         vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
@@ -140,11 +140,14 @@ impl RoomFeatureTrait for FloodFillLine {
             let d = d / d.magnitude();
             let d = vec2(-d.y, d.x);
 
-            let o1 = (p1.h_range * d).extend(0.);
-            let o2 = (p2.h_range * d).extend(0.);
+            let o1 = (*p1.h_range * d).extend(0.);
+            let o2 = (*p2.h_range * d).extend(0.);
             add_line(v1 + o1, v2 + o2);
             add_line(v1 - o1, v2 - o2);
-            add_line(v1 + vec3(0., 0., p1.v_range), v2 + vec3(0., 0., p2.v_range));
+            add_line(
+                v1 + vec3(0., 0., *p1.v_range),
+                v2 + vec3(0., 0., *p2.v_range),
+            );
         }
 
         // horizontal perimeter circle
@@ -159,14 +162,14 @@ impl RoomFeatureTrait for FloodFillLine {
             while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
                 add_line(
                     vec3(
-                        point.location.x + point.h_range * a.0,
-                        point.location.y + point.h_range * a.1,
-                        point.location.z,
+                        *point.location.x + *point.h_range * a.0,
+                        *point.location.y + *point.h_range * a.1,
+                        *point.location.z,
                     ),
                     vec3(
-                        point.location.x + point.h_range * b.0,
-                        point.location.y + point.h_range * b.1,
-                        point.location.z,
+                        *point.location.x + *point.h_range * b.0,
+                        *point.location.y + *point.h_range * b.1,
+                        *point.location.z,
                     ),
                 );
             }
@@ -184,26 +187,26 @@ impl RoomFeatureTrait for FloodFillLine {
             while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
                 add_line(
                     vec3(
-                        point.location.x + point.h_range * a.0,
-                        point.location.y,
-                        point.location.z + point.v_range * a.1,
+                        *point.location.x + *point.h_range * a.0,
+                        *point.location.y,
+                        *point.location.z + *point.v_range * a.1,
                     ),
                     vec3(
-                        point.location.x + point.h_range * b.0,
-                        point.location.y,
-                        point.location.z + point.v_range * b.1,
+                        *point.location.x + *point.h_range * b.0,
+                        *point.location.y,
+                        *point.location.z + *point.v_range * b.1,
                     ),
                 );
                 add_line(
                     vec3(
-                        point.location.x,
-                        point.location.y + point.h_range * a.0,
-                        point.location.z + point.v_range * a.1,
+                        *point.location.x,
+                        *point.location.y + *point.h_range * a.0,
+                        *point.location.z + *point.v_range * a.1,
                     ),
                     vec3(
-                        point.location.x,
-                        point.location.y + point.h_range * b.0,
-                        point.location.z + point.v_range * b.1,
+                        *point.location.x,
+                        *point.location.y + *point.h_range * b.0,
+                        *point.location.z + *point.v_range * b.1,
                     ),
                 );
             }
@@ -228,7 +231,7 @@ impl RoomFeatureTrait for FloodFillLine {
             let mut changed = false;
             ui.horizontal(|ui| {
                 vector3(ui, &mut point.location).c(&mut changed);
-                ui.add(egui::DragValue::new(&mut point.h_range).speed(1.))
+                ui.add(egui::DragValue::new(&mut *point.h_range).speed(1.))
                     .c(&mut changed);
             });
             changed
@@ -356,11 +359,11 @@ impl RoomFeatureTrait for EntranceFeature {
 fn vector3(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
-        ui.add(egui::DragValue::new(&mut vec.x).speed(1.))
+        ui.add(egui::DragValue::new(&mut *vec.x).speed(1.))
             .c(&mut changed);
-        ui.add(egui::DragValue::new(&mut vec.y).speed(1.))
+        ui.add(egui::DragValue::new(&mut *vec.y).speed(1.))
             .c(&mut changed);
-        ui.add(egui::DragValue::new(&mut vec.z).speed(1.))
+        ui.add(egui::DragValue::new(&mut *vec.z).speed(1.))
             .c(&mut changed);
     });
     changed

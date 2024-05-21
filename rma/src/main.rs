@@ -103,7 +103,6 @@ impl RoomFeatureExt for RoomFeature {
             RoomFeature::RandomSubRoomFeature => todo!(),
             RoomFeature::ResourceFeature(f) => &mut f.base.room_features,
             RoomFeature::SubRoomFeature => todo!(),
-
         }
     }
 }
@@ -225,6 +224,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                             f: &[RoomFeature],
                             states: &mut HashMap<Vec<usize>, State>,
                             selected_feature: &mut Vec<usize>,
+                            deferred_select: &mut Vec<usize>,
                         ) {
                             path.push(0);
                             for (i, f) in f.iter().enumerate() {
@@ -242,11 +242,13 @@ pub fn run(mode: AppMode) -> Result<()> {
                                         ""
                                     );
                                     let mut checked = path == selected_feature;
+                                    //println!("{path:?} {selected_feature:?}");
                                     if ui.toggle_value(&mut checked, f.name()).changed() && checked {
-                                        *selected_feature = path.clone();
+                                        println!("{path:?} asdf");
+                                        *deferred_select = path.clone();
                                     }
                                 })
-                                .body(|ui| features(ui, path, &f.base().room_features, states, selected_feature));
+                                .body(|ui| features(ui, path, &f.base().room_features, states, selected_feature, deferred_select));
                             }
                             path.pop();
                         }
@@ -324,6 +326,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                                     &mut path,
                                                     &rma.room_features,
                                                     &mut states,
+                                                    &mut selected_feature,
                                                     &mut deferred_select,
                                                 );
                                             }
@@ -416,7 +419,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                     })),
                 &[&light0, &light1],
             )
-            .write(|| gui.render()).unwrap();
+            .write(|| gui.render());
 
         FrameOutput::default()
     });
@@ -442,9 +445,91 @@ mod test {
                 let asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
                 let _rma = read_rma(asset)
                     .with_context(|| format!("parsing asset {:?}", path.display()))?;
+                println!("{_rma:?}");
             }
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn test_read_small() -> Result<()> {
+        use std::fmt::Write;
+
+        let path = std::path::Path::new("../assets/rma/RMA_2PValley.uasset");
+        let mut asset_orig = read_asset(&path, EngineVersion::VER_UE4_27)?;
+        let asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
+
+        let mut buf = String::new();
+        writeln!(&mut buf, "{asset:#?}").unwrap();
+        std::fs::write("../dbg_orig.txt", buf)?;
+
+        dbg!(&asset.asset_data.exports);
+
+        let _rma = read_rma(asset)?;
+        println!("{_rma:#?}");
+
+        asset_stuff::asdf(&mut asset_orig, &_rma)?;
+
+        let new_path = std::path::Path::new("../RMA_CarverA.uasset");
+        dbg!(&asset_orig);
+
+        let mut buf = String::new();
+        writeln!(&mut buf, "{asset_orig:#?}").unwrap();
+        std::fs::write("../dbg_new.txt", buf)?;
+
+        asset_orig.write_data(
+            &mut std::fs::File::create(new_path)?,
+            Some(&mut std::fs::File::create(new_path.with_extension("uexp"))?),
+        )?;
+
+        //let rma_round_trip = read_rma(asset_orig)?;
+        //assert_eq!(_rma, rma_round_trip);
+
+        Ok(())
+    }
+
+    mod asset_stuff {
+        use anyhow::Result;
+        use rma::rma::RoomGenerator;
+        use rma_lib::{NameCounter, ToExport as _};
+        use std::io::{Read, Seek};
+
+        use unreal_asset::{exports::ExportBaseTrait, types::PackageIndex, Asset};
+
+        pub fn asdf<C: Read + Seek>(other: &mut Asset<C>, data: &RoomGenerator) -> Result<()> {
+            other.asset_data.exports.clear();
+            //other.imports.clear();
+
+            let mut name_counter = NameCounter::default();
+            let pi = dbg!(data.to_export(&mut rma_lib::CtxSer::new(other, &mut name_counter))?);
+
+            let name = other.add_fname("RMA_CarverA");
+            other
+                .asset_data
+                .exports
+                .last_mut()
+                .unwrap()
+                .get_base_export_mut()
+                .object_name = name;
+
+            for (i, export) in other.asset_data.exports.iter_mut().enumerate() {
+                let i = PackageIndex::from_export(i as i32).unwrap();
+                if i != pi {
+                    let base = export.get_base_export_mut();
+                    base.outer_index = pi;
+                    base.create_before_create_dependencies.push(pi);
+                }
+            }
+
+            //other.asset_data.exports.pop();
+
+            //*other.asset_data.exports.last_mut().unwrap() = export;
+            //let last = other.asset_data.exports.last().unwrap();
+            //pretty_assertions::assert_eq!(*last, export);
+
+            //dbg!(&other.asset_data.exports.last().unwrap());
+            Ok(())
+        }
     }
 }
