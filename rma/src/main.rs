@@ -251,7 +251,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                                     //println!("{path:?} {selected_feature:?}");
                                     if ui.toggle_value(&mut checked, f.name()).changed() && checked {
                                         println!("{path:?} asdf");
-                                        *deferred_select = path.clone();
+                                        deferred_select.clone_from(path);
                                     }
                                 })
                                 .body(|ui| features(ui, path, &f.base().room_features, states, selected_feature, deferred_select));
@@ -499,8 +499,8 @@ mod test {
         use std::fmt::Write;
 
         let path = std::path::Path::new("../assets/rma/RMA_2PValley.uasset");
-        let mut asset_orig = read_asset(&path, EngineVersion::VER_UE4_27)?;
-        let asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
+        let mut asset_orig = read_asset(path, EngineVersion::VER_UE4_27)?;
+        let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
 
         let mut buf = String::new();
         writeln!(&mut buf, "{asset:#?}").unwrap();

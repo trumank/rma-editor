@@ -53,7 +53,7 @@ pub fn read_rma<C: Read + Seek>(asset: &Asset<C>) -> Result<RoomGenerator> {
         })
         .unwrap();
 
-    RoomGenerator::from_export(&asset, root)
+    RoomGenerator::from_export(asset, root)
 }
 
 // Entry point for wasm

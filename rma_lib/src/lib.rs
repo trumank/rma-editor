@@ -351,8 +351,7 @@ impl<C: Read + Seek, T: ToProperty<C>> ToProperty<C> for Option<T> {
         ancestry: Ancestry,
     ) -> Result<Option<Property>> {
         self.as_ref()
-            .map(|s| s.to_property(ctx, name, ancestry).transpose())
-            .flatten()
+            .and_then(|s| s.to_property(ctx, name, ancestry).transpose())
             .transpose()
     }
 }
