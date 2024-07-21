@@ -277,7 +277,13 @@ pub fn run(mode: AppMode) -> Result<()> {
                         frame_input.viewport.height as f32,
                     ) / frame_input.device_pixel_ratio,
                 );
-                draw_gizmo(gui_context, viewport, &mut gizmo, &mut clear_events);
+                draw_gizmo(
+                    gui_context,
+                    viewport,
+                    &mut gizmo,
+                    &mut clear_events,
+                    &mut app,
+                );
             },
         );
 
@@ -535,119 +541,126 @@ fn draw_gizmo(
     viewport: egui::Rect,
     gizmo: &mut GizmoWrapper,
     clear_events: &mut bool,
+    app: &mut App,
 ) {
     egui::Area::new("Viewport".into())
         .fixed_pos(viewport.min)
         .constrain_to(viewport)
         .show(ctx, |ui| {
             ui.with_layer_id(egui::LayerId::background(), |ui| {
-                //////////////////////
+                let mut path_iter = app.selected_feature.iter();
+                if let Some(first) = path_iter.next() {
+                    let Some(rma) = &mut app.rma else {
+                        unreachable!("maybe?")
+                    };
+                    let mut feature = &mut rma.0.room_features[*first];
+                    for feature_index in path_iter {
+                        feature = &mut feature.room_features_mut()[*feature_index];
+                    }
+                    //feature
+                    //let changed = feature.ui(ui);
 
-                //let mut path_iter = selected_feature.iter();
-                //if let Some(first) = path_iter.next() {
-                //    strip.cell(|ui| {
-                //        ui.push_id("edit feature", |ui| {
-                //            ui.group(|ui| {
-                //                ui.heading("Edit Feature");
-                //                egui::ScrollArea::vertical().show(ui, |ui| {
-                //                    let Some(rma) = &mut rma else { return };
-                //                    let mut feature = &mut rma.0.room_features[*first];
-                //                    for feature_index in path_iter {
-                //                        feature = &mut feature.room_features_mut()[*feature_index];
-                //                    }
-                //                    let changed = feature.ui(ui);
+                    let vec = match feature {
+                        RoomFeature::EntranceFeature(feature) => &mut feature.location,
+                        _ => return,
+                    };
 
-                //                    if changed {
-                //                        //states.clear();
-                //                        primitives = Some(build_primitives(&RMAContext {
-                //                            context: &context,
-                //                            wireframe_material: wireframe_material.clone(),
-                //                            wireframe_mesh: wireframe_mesh.clone(),
-                //                        }, &rma.0));
-                //                    }
-
-                //                    ui.allocate_space(ui.available_size());
-                //                });
-                //            });
-                //        });
-                //    });
-                //}
-
-                let projection_matrix = DMat4::perspective_infinite_reverse_lh(
-                    std::f64::consts::PI / 4.0,
-                    (viewport.width() / viewport.height()).into(),
-                    0.1,
-                );
-
-                // Fixed camera position
-                let view_matrix = DMat4::look_at_lh(DVec3::splat(5.0), DVec3::ZERO, DVec3::Y);
-                let snapping = ui.input(|input| input.modifiers.ctrl);
-
-                gizmo.gizmo.update_config(GizmoConfig {
-                    view_matrix: view_matrix.into(),
-                    projection_matrix: projection_matrix.into(),
-                    viewport,
-                    modes: GizmoMode::all(),
-                    orientation: GizmoOrientation::Local,
-                    snapping,
-                    ..Default::default()
-                });
-
-                let mut transform =
-                    transform_gizmo_egui::math::Transform::from_scale_rotation_translation(
-                        gizmo.scale,
-                        gizmo.rotation,
-                        gizmo.translation,
-                    );
-
-                if let Some((result, new_transforms)) = gizmo.gizmo.interact(ui, &[transform]) {
-                    *clear_events = true;
-
-                    for (new_transform, transform) in
-                        new_transforms.iter().zip(std::iter::once(&mut transform))
-                    {
-                        *transform = *new_transform;
+                    pub fn convert_mat4_to_mint(
+                        mat: &Mat4,
+                    ) -> transform_gizmo_egui::mint::RowMatrix4<f64> {
+                        #[rustfmt::skip]
+                        let tab: [[f64; 4]; 4] = [
+                            [mat.x.x as f64, mat.y.x as f64, mat.z.x as f64, mat.w.x as f64],
+                            [mat.x.y as f64, mat.y.y as f64, mat.z.y as f64, mat.w.y as f64],
+                            [mat.x.z as f64, mat.y.z as f64, mat.z.z as f64, mat.w.z as f64],
+                            [mat.x.w as f64, mat.y.w as f64, mat.z.w as f64, mat.w.w as f64],
+                        ];
+                        transform_gizmo_egui::mint::RowMatrix4::from(tab)
                     }
 
-                    gizmo.scale = transform.scale.into();
-                    gizmo.rotation = transform.rotation.into();
-                    gizmo.translation = transform.translation.into();
+                    // Fixed camera position
+                    let snapping = ui.input(|input| input.modifiers.ctrl);
 
-                    let text = match result {
-                        GizmoResult::Rotation {
-                            axis,
-                            delta: _,
-                            total,
-                            is_view_axis: _,
-                        } => {
-                            format!(
-                                "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
-                                axis.x,
-                                axis.y,
-                                axis.z,
-                                total.to_degrees()
-                            )
+                    gizmo.gizmo.update_config(GizmoConfig {
+                        view_matrix: convert_mat4_to_mint(app.camera.view()),
+                        projection_matrix: convert_mat4_to_mint(app.camera.projection()),
+                        viewport,
+                        modes: GizmoMode::all(),
+                        orientation: GizmoOrientation::Local,
+                        snapping,
+                        ..Default::default()
+                    });
+
+                    let mut transform =
+                        transform_gizmo_egui::math::Transform::from_scale_rotation_translation(
+                            gizmo.scale,
+                            gizmo.rotation,
+                            [vec.x.0 as f64, vec.y.0 as f64, vec.z.0 as f64],
+                        );
+
+                    if let Some((result, new_transforms)) = gizmo.gizmo.interact(ui, &[transform]) {
+                        *clear_events = true;
+
+                        for (new_transform, transform) in
+                            new_transforms.iter().zip(std::iter::once(&mut transform))
+                        {
+                            *transform = *new_transform;
                         }
-                        GizmoResult::Translation { delta: _, total } => {
-                            format!(
-                                "Translation: ({:.2}, {:.2}, {:.2})",
-                                total.x, total.y, total.z,
-                            )
-                        }
-                        GizmoResult::Scale { total } => {
-                            format!("Scale: ({:.2}, {:.2}, {:.2})", total.x, total.y, total.z,)
-                        }
-                        GizmoResult::Arcball { delta: _, total } => {
-                            let (axis, angle) = DQuat::from(total).to_axis_angle();
-                            format!(
-                                "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
-                                axis.x,
-                                axis.y,
-                                axis.z,
-                                angle.to_degrees()
-                            )
-                        }
-                    };
+
+                        gizmo.scale = transform.scale.into();
+                        gizmo.rotation = transform.rotation.into();
+                        //gizmo.translation = transform.translation.into();
+
+                        vec.x.0 = transform.translation.x as f32;
+                        vec.y.0 = transform.translation.y as f32;
+                        vec.z.0 = transform.translation.z as f32;
+
+                        let text = match result {
+                            GizmoResult::Rotation {
+                                axis,
+                                delta: _,
+                                total,
+                                is_view_axis: _,
+                            } => {
+                                format!(
+                                    "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
+                                    axis.x,
+                                    axis.y,
+                                    axis.z,
+                                    total.to_degrees()
+                                )
+                            }
+                            GizmoResult::Translation { delta: _, total } => {
+                                format!(
+                                    "Translation: ({:.2}, {:.2}, {:.2})",
+                                    total.x, total.y, total.z,
+                                )
+                            }
+                            GizmoResult::Scale { total } => {
+                                format!("Scale: ({:.2}, {:.2}, {:.2})", total.x, total.y, total.z,)
+                            }
+                            GizmoResult::Arcball { delta: _, total } => {
+                                let (axis, angle) = DQuat::from(total).to_axis_angle();
+                                format!(
+                                    "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
+                                    axis.x,
+                                    axis.y,
+                                    axis.z,
+                                    angle.to_degrees()
+                                )
+                            }
+                        };
+
+                        //states.clear();
+                        app.primitives = Some(build_primitives(
+                            &RMAContext {
+                                context: &app.context,
+                                wireframe_material: app.wireframe_material.clone(),
+                                wireframe_mesh: app.wireframe_mesh.clone(),
+                            },
+                            &rma.0,
+                        ));
+                    }
                 }
             })
         });
