@@ -5,6 +5,7 @@ use anyhow::Result;
 use futures::task::LocalSpawnExt;
 use log::info;
 use rma::read_rma;
+use rma::room_features::Gizmos;
 use rma::AppMode;
 use three_d::*;
 use transform_gizmo_egui::math::DMat4;
@@ -83,19 +84,19 @@ fn build_primitives(
 }
 
 trait RoomFeatureExt {
-    fn ui(&mut self, ui: &mut egui::Ui) -> bool;
+    fn ui<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool;
     fn room_features_mut(&mut self) -> &mut Vec<RoomFeature>;
 }
 
 impl RoomFeatureExt for RoomFeature {
-    fn ui(&mut self, ui: &mut egui::Ui) -> bool {
+    fn ui<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         match self {
-            RoomFeature::FloodFillBox(f) => f.editor(ui),
-            RoomFeature::FloodFillPillar(f) => f.editor(ui),
-            RoomFeature::SpawnActorFeature(f) => f.editor(ui),
-            RoomFeature::FloodFillLine(f) => f.editor(ui),
-            RoomFeature::EntranceFeature(f) => f.editor(ui),
-            RoomFeature::DropPodCalldownLocationFeature(f) => f.editor(ui),
+            RoomFeature::FloodFillBox(f) => f.editor(ui, gizmos),
+            RoomFeature::FloodFillPillar(f) => f.editor(ui, gizmos),
+            RoomFeature::SpawnActorFeature(f) => f.editor(ui, gizmos),
+            RoomFeature::FloodFillLine(f) => f.editor(ui, gizmos),
+            RoomFeature::EntranceFeature(f) => f.editor(ui, gizmos),
+            RoomFeature::DropPodCalldownLocationFeature(f) => f.editor(ui, gizmos),
             _ => todo!(),
         }
     }
@@ -126,9 +127,10 @@ impl Default for State {
     }
 }
 
+type RMA = Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>;
 struct App {
     panel_width: f32,
-    rma: Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
+    //rma: Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
     mode: AppMode,
     selected_room: Option<String>,
     selected_feature: Vec<usize>,
@@ -141,10 +143,11 @@ struct App {
     wireframe_mesh: CpuMesh,
     primitives: Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
     camera: Camera,
+    gizmos: Vec<GizmoWrapper>,
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
-    let rma = match &mode {
+    let mut rma = match &mode {
         AppMode::Editor { path } => {
             use rma::read_asset;
 
@@ -217,7 +220,7 @@ pub fn run(mode: AppMode) -> Result<()> {
     let mut app = App {
         panel_width: 300.0,
         primitives: rma.as_ref().map(|rma| build_primitives(&rma_ctx, &rma.0)),
-        rma,
+        //rma,
         mode,
         selected_room: None,
         selected_feature: vec![],
@@ -229,15 +232,16 @@ pub fn run(mode: AppMode) -> Result<()> {
         wireframe_material,
         wireframe_mesh,
         camera,
+        gizmos: vec![],
     };
 
     window.render_loop(move |mut frame_input| {
         ex.run_until_stalled();
 
         if let Ok(new_rma) = rx.try_recv() {
-            app.rma = Some(new_rma);
+            rma = Some(new_rma);
             app.states.clear();
-            app.primitives = app.rma.as_ref().map(|rma| {
+            app.primitives = rma.as_ref().map(|rma| {
                 build_primitives(
                     &RMAContext {
                         context: &app.context,
@@ -268,22 +272,40 @@ pub fn run(mode: AppMode) -> Result<()> {
             frame_input.viewport,
             frame_input.device_pixel_ratio,
             |gui_context| {
-                draw_panel(gui_context, &mut app);
+                let mut changed = false;
+                {
+                    let mut gizmos = vec![];
 
-                let viewport = egui::Rect::from_min_max(
-                    (app.panel_width, 0.).into(),
-                    egui::pos2(
-                        frame_input.viewport.width as f32,
-                        frame_input.viewport.height as f32,
-                    ) / frame_input.device_pixel_ratio,
-                );
-                draw_gizmo(
-                    gui_context,
-                    viewport,
-                    &mut gizmo,
-                    &mut clear_events,
-                    &mut app,
-                );
+                    draw_panel(gui_context, &mut app, &mut rma, &mut changed, &mut gizmos);
+
+                    let viewport = egui::Rect::from_min_max(
+                        (app.panel_width, 0.).into(),
+                        egui::pos2(
+                            frame_input.viewport.width as f32,
+                            frame_input.viewport.height as f32,
+                        ) / frame_input.device_pixel_ratio,
+                    );
+                    draw_gizmo(
+                        gui_context,
+                        viewport,
+                        gizmos,
+                        &mut clear_events,
+                        &mut app,
+                        &mut changed,
+                    );
+                }
+
+                if changed {
+                    //states.clear();
+                    app.primitives = Some(build_primitives(
+                        &RMAContext {
+                            context: &app.context,
+                            wireframe_material: app.wireframe_material.clone(),
+                            wireframe_mesh: app.wireframe_mesh.clone(),
+                        },
+                        &rma.as_ref().unwrap().0,
+                    ));
+                }
             },
         );
 
@@ -337,7 +359,13 @@ pub fn run(mode: AppMode) -> Result<()> {
     Ok(())
 }
 
-fn draw_panel(ctx: &egui::Context, app: &mut App) {
+fn draw_panel<'g>(
+    ctx: &egui::Context,
+    app: &mut App,
+    rma: &'g mut RMA,
+    changed: &mut bool,
+    gizmos: &mut Gizmos<'g>,
+) {
     use three_d::egui::*;
     SidePanel::left("side_panel")
         .resizable(false)
@@ -345,7 +373,7 @@ fn draw_panel(ctx: &egui::Context, app: &mut App) {
         .max_width(app.panel_width)
         .show(ctx, |ui| {
             ui.heading("Debug Panel");
-            if let Some(rma) = app.rma.as_mut() {
+            if let Some(rma) = rma.as_mut() {
                 if ui.button("save").clicked() {
                     save(&mut rma.1, &rma.0).unwrap();
                 }
@@ -473,7 +501,7 @@ fn draw_panel(ctx: &egui::Context, app: &mut App) {
                         ui.group(|ui| {
                             ui.heading("Room Features");
                             egui::ScrollArea::vertical().show(ui, |ui| {
-                                if let Some(rma) = &app.rma {
+                                if let Some(rma) = rma.as_ref() {
                                     let mut path = vec![];
                                     features(
                                         ui,
@@ -496,24 +524,12 @@ fn draw_panel(ctx: &egui::Context, app: &mut App) {
                             ui.group(|ui| {
                                 ui.heading("Edit Feature");
                                 egui::ScrollArea::vertical().show(ui, |ui| {
-                                    let Some(rma) = &mut app.rma else { return };
+                                    let Some(rma) = rma.as_mut() else { return };
                                     let mut feature = &mut rma.0.room_features[*first];
                                     for feature_index in path_iter {
                                         feature = &mut feature.room_features_mut()[*feature_index];
                                     }
-                                    let changed = feature.ui(ui);
-
-                                    if changed {
-                                        //states.clear();
-                                        app.primitives = Some(build_primitives(
-                                            &RMAContext {
-                                                context: &app.context,
-                                                wireframe_material: app.wireframe_material.clone(),
-                                                wireframe_mesh: app.wireframe_mesh.clone(),
-                                            },
-                                            &rma.0,
-                                        ));
-                                    }
+                                    *changed |= feature.ui(ui, gizmos);
 
                                     ui.allocate_space(ui.available_size());
                                 });
@@ -539,31 +555,24 @@ struct GizmoWrapper {
 fn draw_gizmo(
     ctx: &egui::Context,
     viewport: egui::Rect,
-    gizmo: &mut GizmoWrapper,
+    gizmos: Gizmos,
     clear_events: &mut bool,
     app: &mut App,
+    changed: &mut bool,
 ) {
     egui::Area::new("Viewport".into())
         .fixed_pos(viewport.min)
         .constrain_to(viewport)
         .show(ctx, |ui| {
             ui.with_layer_id(egui::LayerId::background(), |ui| {
-                let mut path_iter = app.selected_feature.iter();
-                if let Some(first) = path_iter.next() {
-                    let Some(rma) = &mut app.rma else {
-                        unreachable!("maybe?")
-                    };
-                    let mut feature = &mut rma.0.room_features[*first];
-                    for feature_index in path_iter {
-                        feature = &mut feature.room_features_mut()[*feature_index];
-                    }
-                    //feature
-                    //let changed = feature.ui(ui);
-
-                    let vec = match feature {
-                        RoomFeature::EntranceFeature(feature) => &mut feature.location,
-                        _ => return,
-                    };
+                while app.gizmos.len() < gizmos.len() {
+                    app.gizmos.push(Default::default());
+                }
+                while app.gizmos.len() > gizmos.len() {
+                    app.gizmos.pop();
+                }
+                for ((start, cb), gizmo) in gizmos.into_iter().zip(app.gizmos.iter_mut()) {
+                    let vec = start;
 
                     pub fn convert_mat4_to_mint(
                         mat: &Mat4,
@@ -585,7 +594,7 @@ fn draw_gizmo(
                         view_matrix: convert_mat4_to_mint(app.camera.view()),
                         projection_matrix: convert_mat4_to_mint(app.camera.projection()),
                         viewport,
-                        modes: GizmoMode::all(),
+                        modes: GizmoMode::all_translate(),
                         orientation: GizmoOrientation::Local,
                         snapping,
                         ..Default::default()
@@ -611,55 +620,13 @@ fn draw_gizmo(
                         gizmo.rotation = transform.rotation.into();
                         //gizmo.translation = transform.translation.into();
 
-                        vec.x.0 = transform.translation.x as f32;
-                        vec.y.0 = transform.translation.y as f32;
-                        vec.z.0 = transform.translation.z as f32;
+                        *changed = true;
 
-                        let text = match result {
-                            GizmoResult::Rotation {
-                                axis,
-                                delta: _,
-                                total,
-                                is_view_axis: _,
-                            } => {
-                                format!(
-                                    "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
-                                    axis.x,
-                                    axis.y,
-                                    axis.z,
-                                    total.to_degrees()
-                                )
-                            }
-                            GizmoResult::Translation { delta: _, total } => {
-                                format!(
-                                    "Translation: ({:.2}, {:.2}, {:.2})",
-                                    total.x, total.y, total.z,
-                                )
-                            }
-                            GizmoResult::Scale { total } => {
-                                format!("Scale: ({:.2}, {:.2}, {:.2})", total.x, total.y, total.z,)
-                            }
-                            GizmoResult::Arcball { delta: _, total } => {
-                                let (axis, angle) = DQuat::from(total).to_axis_angle();
-                                format!(
-                                    "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
-                                    axis.x,
-                                    axis.y,
-                                    axis.z,
-                                    angle.to_degrees()
-                                )
-                            }
-                        };
-
-                        //states.clear();
-                        app.primitives = Some(build_primitives(
-                            &RMAContext {
-                                context: &app.context,
-                                wireframe_material: app.wireframe_material.clone(),
-                                wireframe_mesh: app.wireframe_mesh.clone(),
-                            },
-                            &rma.0,
-                        ));
+                        cb(rma::rma::FVector {
+                            x: (transform.translation.x as f32).into(),
+                            y: (transform.translation.y as f32).into(),
+                            z: (transform.translation.z as f32).into(),
+                        });
                     }
                 }
             })

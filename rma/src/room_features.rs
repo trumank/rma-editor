@@ -30,9 +30,10 @@ impl ChangedTrait for bool {
     }
 }
 
+pub type Gizmos<'s> = Vec<(FVector, Box<dyn FnOnce(FVector) + 's>)>;
 pub trait RoomFeatureTrait {
     fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>>;
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool;
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool;
 }
 
 impl From<FVector> for Vector3<f32> {
@@ -62,7 +63,7 @@ impl RoomFeatureTrait for FloodFillBox {
 
         vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
     }
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         false
     }
 }
@@ -89,7 +90,7 @@ impl RoomFeatureTrait for FloodFillPillar {
             ctx.wireframe_material.clone(),
         ))]
     }
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         ui.label("FloodFillPillar");
         false
     }
@@ -119,7 +120,7 @@ impl RoomFeatureTrait for SpawnActorFeature {
         );
         vec![Box::new(obj)]
     }
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         todo!()
     }
 }
@@ -224,7 +225,7 @@ impl RoomFeatureTrait for FloodFillLine {
             ctx.wireframe_material.clone(),
         ))]
     }
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         let mut changed = false;
 
         list_editor(ui, &mut self.points, |ui, point| {
@@ -248,6 +249,15 @@ impl RoomFeatureTrait for FloodFillLine {
             */
         })
         .c(&mut changed);
+
+        for p in &mut self.points {
+            gizmos.push((
+                p.location,
+                Box::new(|vec| {
+                    p.location = vec;
+                }),
+            ));
+        }
 
         changed
     }
@@ -339,7 +349,7 @@ impl RoomFeatureTrait for EntranceFeature {
         );
         vec![Box::new(sphere)]
     }
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         let mut changed = false;
 
         egui::Grid::new("grid")
@@ -351,6 +361,13 @@ impl RoomFeatureTrait for EntranceFeature {
                 vector3(ui, &mut self.location).c(&mut changed);
                 ui.end_row();
             });
+
+        gizmos.push((
+            self.location.clone(),
+            Box::new(|vec| {
+                self.location = vec;
+            }),
+        ));
 
         changed
     }
@@ -393,7 +410,7 @@ impl RoomFeatureTrait for DropPodCalldownLocationFeature {
         );
         vec![Box::new(sphere)]
     }
-    fn editor(&mut self, ui: &mut egui::Ui) -> bool {
+    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         todo!()
     }
 }
