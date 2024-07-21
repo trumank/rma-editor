@@ -2,7 +2,6 @@
 use crate as rma;
 
 use anyhow::Result;
-use futures::future::ok;
 use futures::task::LocalSpawnExt;
 use log::info;
 use rma::read_rma;
@@ -236,7 +235,7 @@ pub fn run(mode: AppMode) -> Result<()> {
             frame_input.device_pixel_ratio,
             |gui_context| {
                 draw_panel(
-                    &gui_context,
+                    gui_context,
                     panel_width,
                     &mut rma,
                     &mode,
@@ -259,7 +258,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                         frame_input.viewport.height as f32,
                     ) / frame_input.device_pixel_ratio,
                 );
-                draw_gizmo(&gui_context, viewport, &mut gizmo, &mut clear_events);
+                draw_gizmo(gui_context, viewport, &mut gizmo, &mut clear_events);
             },
         );
 
@@ -507,7 +506,7 @@ fn draw_panel(
                                         //states.clear();
                                         *primitives = Some(build_primitives(
                                             &RMAContext {
-                                                context: &context,
+                                                context,
                                                 wireframe_material: wireframe_material.clone(),
                                                 wireframe_mesh: wireframe_mesh.clone(),
                                             },
@@ -545,7 +544,7 @@ fn draw_gizmo(
     egui::Area::new("Viewport".into())
         .fixed_pos(viewport.min)
         .constrain_to(viewport)
-        .show(&ctx, |ui| {
+        .show(ctx, |ui| {
             ui.with_layer_id(egui::LayerId::background(), |ui| {
                 //////////////////////
 
