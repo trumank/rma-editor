@@ -2,10 +2,20 @@
 use crate as rma;
 
 use anyhow::Result;
+use futures::future::ok;
 use log::info;
 use rma::read_rma;
 use rma::AppMode;
 use three_d::*;
+use transform_gizmo_egui::math::DMat4;
+use transform_gizmo_egui::math::DQuat;
+use transform_gizmo_egui::math::DVec3;
+use transform_gizmo_egui::Gizmo;
+use transform_gizmo_egui::GizmoConfig;
+use transform_gizmo_egui::GizmoExt as _;
+use transform_gizmo_egui::GizmoMode;
+use transform_gizmo_egui::GizmoOrientation;
+use transform_gizmo_egui::GizmoResult;
 use unreal_asset::engine_version::EngineVersion;
 use unreal_asset::Asset;
 
@@ -190,6 +200,21 @@ pub fn run(mode: AppMode) -> Result<()> {
 
     let mut task_handles = vec![];
 
+    #[derive(Default)]
+    struct GizmoWrapper {
+        gizmo: Gizmo,
+        scale: DVec3,
+        rotation: DQuat,
+        translation: DVec3,
+    }
+
+    let mut gizmo = GizmoWrapper {
+        scale: DVec3::ONE,
+        rotation: DQuat::IDENTITY,
+        translation: DVec3::ZERO,
+        ..Default::default()
+    };
+
     window.render_loop(move |mut frame_input| {
         ex.run_until_stalled();
 
@@ -204,6 +229,18 @@ pub fn run(mode: AppMode) -> Result<()> {
         }
 
         let panel_width = 300.0;
+        let scaled_panel_width = panel_width * frame_input.device_pixel_ratio;
+
+        let mut clear_events = false;
+
+        let viewport = Viewport {
+            x: scaled_panel_width as i32,
+            y: 0,
+            width: frame_input.viewport.width - scaled_panel_width as u32,
+            height: frame_input.viewport.height,
+        };
+
+        camera.set_viewport(viewport);
 
         gui.update(
             &mut frame_input.events,
@@ -217,6 +254,8 @@ pub fn run(mode: AppMode) -> Result<()> {
                     .min_width(panel_width)
                     .max_width(panel_width)
                     .show(gui_context, |ui| {
+
+
                         use three_d::egui::*;
                         ui.heading("Debug Panel");
                         if let Some(rma) = rma.as_mut() {
@@ -375,18 +414,129 @@ pub fn run(mode: AppMode) -> Result<()> {
                             }
                         });
                     });
+
+                let viewport = Rect::from_min_max((panel_width, 0.).into(), pos2(frame_input.viewport.width as f32, frame_input.viewport.height as f32) / frame_input.device_pixel_ratio);
+                egui::Area::new("Viewport".into())
+                    .fixed_pos((panel_width, 0.0))
+                    .constrain_to(viewport)
+                    .show(gui_context, |ui| {
+                        //ui.set_clip_rect(Rect::from_min_size(ui.cursor().min, ui.available_size()));
+                        ui.with_layer_id(LayerId::background(), |ui| {
+
+                        //////////////////////
+
+
+                            //let mut path_iter = selected_feature.iter();
+                            //if let Some(first) = path_iter.next() {
+                            //    strip.cell(|ui| {
+                            //        ui.push_id("edit feature", |ui| {
+                            //            ui.group(|ui| {
+                            //                ui.heading("Edit Feature");
+                            //                egui::ScrollArea::vertical().show(ui, |ui| {
+                            //                    let Some(rma) = &mut rma else { return };
+                            //                    let mut feature = &mut rma.0.room_features[*first];
+                            //                    for feature_index in path_iter {
+                            //                        feature = &mut feature.room_features_mut()[*feature_index];
+                            //                    }
+                            //                    let changed = feature.ui(ui);
+
+                            //                    if changed {
+                            //                        //states.clear();
+                            //                        primitives = Some(build_primitives(&RMAContext {
+                            //                            context: &context,
+                            //                            wireframe_material: wireframe_material.clone(),
+                            //                            wireframe_mesh: wireframe_mesh.clone(),
+                            //                        }, &rma.0));
+                            //                    }
+
+                            //                    ui.allocate_space(ui.available_size());
+                            //                });
+                            //            });
+                            //        });
+                            //    });
+                            //}
+
+                        let projection_matrix = DMat4::perspective_infinite_reverse_lh(
+                            std::f64::consts::PI / 4.0,
+                            (viewport.width() / viewport.height()).into(),
+                            0.1,
+                        );
+
+                        // Fixed camera position
+                        let view_matrix = DMat4::look_at_lh(DVec3::splat(5.0), DVec3::ZERO, DVec3::Y);
+                        let snapping = ui.input(|input| input.modifiers.ctrl);
+
+                        gizmo.gizmo.update_config(GizmoConfig {
+                            view_matrix: view_matrix.into(),
+                            projection_matrix: projection_matrix.into(),
+                            viewport,
+                            modes: GizmoMode::all(),
+                            orientation: GizmoOrientation::Local,
+                            snapping,
+                            ..Default::default()
+                        });
+
+                        let mut transform =
+                            transform_gizmo_egui::math::Transform::from_scale_rotation_translation(gizmo.scale, gizmo.rotation, gizmo.translation);
+
+                        if let Some((result, new_transforms)) = gizmo.gizmo.interact(ui, &[transform]) {
+                            clear_events = true;
+
+                            for (new_transform, transform) in
+                                new_transforms.iter().zip(std::iter::once(&mut transform))
+                            {
+                                *transform = *new_transform;
+                            }
+
+                            gizmo.scale = transform.scale.into();
+                            gizmo.rotation = transform.rotation.into();
+                            gizmo.translation = transform.translation.into();
+
+                            let text = match result {
+                                GizmoResult::Rotation {
+                                    axis,
+                                    delta: _,
+                                    total,
+                                    is_view_axis: _,
+                                } => {
+                                    format!(
+                                        "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
+                                        axis.x,
+                                        axis.y,
+                                        axis.z,
+                                        total.to_degrees()
+                                    )
+                                }
+                                GizmoResult::Translation { delta: _, total } => {
+                                    format!(
+                                        "Translation: ({:.2}, {:.2}, {:.2})",
+                                        total.x, total.y, total.z,
+                                    )
+                                }
+                                GizmoResult::Scale { total } => {
+                                    format!("Scale: ({:.2}, {:.2}, {:.2})", total.x, total.y, total.z,)
+                                }
+                                GizmoResult::Arcball { delta: _, total } => {
+                                    let (axis, angle) = DQuat::from(total).to_axis_angle();
+                                    format!(
+                                        "Rotation axis: ({:.2}, {:.2}, {:.2}), Angle: {:.2} deg",
+                                        axis.x,
+                                        axis.y,
+                                        axis.z,
+                                        angle.to_degrees()
+                                    )
+                                }
+                            };
+                        }
+
+                        })});
+
             },
         );
 
-        let viewport = Viewport {
-            x: (panel_width * frame_input.device_pixel_ratio) as i32,
-            y: 0,
-            width: frame_input.viewport.width
-                - (panel_width * frame_input.device_pixel_ratio) as u32,
-            height: frame_input.viewport.height,
-        };
-
-        camera.set_viewport(viewport);
+        if clear_events {
+            frame_input.events.clear();
+        }
 
         #[cfg(target_arch = "wasm32")]
         for event in &mut frame_input.events {
