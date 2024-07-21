@@ -117,8 +117,34 @@ impl RoomFeatureExt for RoomFeature {
     }
 }
 
+struct State {
+    visible: bool,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self { visible: true }
+    }
+}
+
+struct App {
+    panel_width: f32,
+    rma: Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
+    mode: AppMode,
+    selected_room: Option<String>,
+    selected_feature: Vec<usize>,
+    tx: std::sync::mpsc::Sender<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
+    spawner: futures::executor::LocalSpawner,
+    task_handles: Vec<Result<(), futures::task::SpawnError>>,
+    states: HashMap<Vec<usize>, State>,
+    context: three_d::core::Context,
+    wireframe_material: PhysicalMaterial,
+    wireframe_mesh: CpuMesh,
+    primitives: Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
+    camera: Camera,
+}
+
 pub fn run(mode: AppMode) -> Result<()> {
-    let mut rma = match &mode {
+    let rma = match &mode {
         AppMode::Editor { path } => {
             use rma::read_asset;
 
@@ -129,7 +155,6 @@ pub fn run(mode: AppMode) -> Result<()> {
     };
 
     let mut ex = futures::executor::LocalPool::new();
-    let spawner = ex.spawner();
 
     let window = Window::new(WindowSettings {
         title: "RMA Editor".to_string(),
@@ -174,20 +199,13 @@ pub fn run(mode: AppMode) -> Result<()> {
         wireframe_mesh: wireframe_mesh.clone(),
     };
 
-    let mut primitives = rma.as_ref().map(|rma| build_primitives(&rma_ctx, &rma.0));
-
     let axes = Axes::new(&context, 10., 200.0);
 
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
     let mut gui = three_d::GUI::new(&context);
-    let mut states = HashMap::<Vec<usize>, State>::new();
-    let mut selected_room = None;
-    let mut selected_feature: Vec<usize> = vec![];
     let (tx, rx) = mpsc::channel();
-
-    let mut task_handles = vec![];
 
     let mut gizmo = GizmoWrapper {
         scale: DVec3::ONE,
@@ -196,26 +214,42 @@ pub fn run(mode: AppMode) -> Result<()> {
         ..Default::default()
     };
 
+    let mut app = App {
+        panel_width: 300.0,
+        primitives: rma.as_ref().map(|rma| build_primitives(&rma_ctx, &rma.0)),
+        rma,
+        mode,
+        selected_room: None,
+        selected_feature: vec![],
+        tx,
+        spawner: ex.spawner(),
+        task_handles: vec![],
+        states: HashMap::new(),
+        context,
+        wireframe_material,
+        wireframe_mesh,
+        camera,
+    };
+
     window.render_loop(move |mut frame_input| {
         ex.run_until_stalled();
 
         if let Ok(new_rma) = rx.try_recv() {
-            rma = Some(new_rma);
-            states.clear();
-            primitives = rma.as_ref().map(|rma| {
+            app.rma = Some(new_rma);
+            app.states.clear();
+            app.primitives = app.rma.as_ref().map(|rma| {
                 build_primitives(
                     &RMAContext {
-                        context: &context,
-                        wireframe_material: wireframe_material.clone(),
-                        wireframe_mesh: wireframe_mesh.clone(),
+                        context: &app.context,
+                        wireframe_material: app.wireframe_material.clone(),
+                        wireframe_mesh: app.wireframe_mesh.clone(),
                     },
                     &rma.0,
                 )
             });
         }
 
-        let panel_width = 300.0;
-        let scaled_panel_width = panel_width * frame_input.device_pixel_ratio;
+        let scaled_panel_width = app.panel_width * frame_input.device_pixel_ratio;
 
         let mut clear_events = false;
 
@@ -226,7 +260,7 @@ pub fn run(mode: AppMode) -> Result<()> {
             height: frame_input.viewport.height,
         };
 
-        camera.set_viewport(viewport);
+        app.camera.set_viewport(viewport);
 
         gui.update(
             &mut frame_input.events,
@@ -234,25 +268,10 @@ pub fn run(mode: AppMode) -> Result<()> {
             frame_input.viewport,
             frame_input.device_pixel_ratio,
             |gui_context| {
-                draw_panel(
-                    gui_context,
-                    panel_width,
-                    &mut rma,
-                    &mode,
-                    &mut selected_room,
-                    &mut selected_feature,
-                    &tx,
-                    &spawner,
-                    &mut task_handles,
-                    &mut states,
-                    &context,
-                    &wireframe_material,
-                    &wireframe_mesh,
-                    &mut primitives,
-                );
+                draw_panel(gui_context, &mut app);
 
                 let viewport = egui::Rect::from_min_max(
-                    (panel_width, 0.).into(),
+                    (app.panel_width, 0.).into(),
                     egui::pos2(
                         frame_input.viewport.width as f32,
                         frame_input.viewport.height as f32,
@@ -281,16 +300,16 @@ pub fn run(mode: AppMode) -> Result<()> {
                 }
             }
         }
-        control.handle_events(&mut camera, &mut frame_input.events);
+        control.handle_events(&mut app.camera, &mut frame_input.events);
 
         frame_input
             .screen()
             .clear(ClearState::color_and_depth(0.0, 0.0, 0.0, 1.0, 1.0))
             .render(
-                &camera,
+                &app.camera,
                 axes.into_iter()
-                    .chain(primitives.iter().flatten().flat_map(|(path, p)| {
-                        states
+                    .chain(app.primitives.iter().flatten().flat_map(|(path, p)| {
+                        app.states
                             .get(path)
                             .and_then(|state: &State| {
                                 state
@@ -312,39 +331,15 @@ pub fn run(mode: AppMode) -> Result<()> {
     Ok(())
 }
 
-struct State {
-    visible: bool,
-}
-impl Default for State {
-    fn default() -> Self {
-        Self { visible: true }
-    }
-}
-
-fn draw_panel(
-    ctx: &egui::Context,
-    panel_width: f32,
-    rma: &mut Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
-    mode: &AppMode,
-    selected_room: &mut Option<String>,
-    selected_feature: &mut Vec<usize>,
-    tx: &std::sync::mpsc::Sender<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
-    spawner: &futures::executor::LocalSpawner,
-    task_handles: &mut Vec<Result<(), futures::task::SpawnError>>,
-    states: &mut HashMap<Vec<usize>, State>,
-    context: &three_d::core::Context,
-    wireframe_material: &PhysicalMaterial,
-    wireframe_mesh: &CpuMesh,
-    primitives: &mut Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
-) {
+fn draw_panel(ctx: &egui::Context, app: &mut App) {
     use three_d::egui::*;
     SidePanel::left("side_panel")
         .resizable(false)
-        .min_width(panel_width)
-        .max_width(panel_width)
+        .min_width(app.panel_width)
+        .max_width(app.panel_width)
         .show(ctx, |ui| {
             ui.heading("Debug Panel");
-            if let Some(rma) = rma.as_mut() {
+            if let Some(rma) = app.rma.as_mut() {
                 if ui.button("save").clicked() {
                     save(&mut rma.1, &rma.0).unwrap();
                 }
@@ -390,7 +385,7 @@ fn draw_panel(
                 path.pop();
             }
 
-            let rooms = match &mode {
+            let rooms = match &app.mode {
                 AppMode::Gallery { paths } => Some(paths),
                 AppMode::Editor { .. } => None,
             };
@@ -400,7 +395,7 @@ fn draw_panel(
             if rooms.is_some() {
                 num_cells += 1;
             }
-            if !selected_feature.is_empty() {
+            if !app.selected_feature.is_empty() {
                 num_cells += 1;
             }
             for _ in 0..num_cells {
@@ -415,14 +410,14 @@ fn draw_panel(
                                 egui::ScrollArea::vertical().show(ui, |ui| {
                                     ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
                                         for room in rooms {
-                                            let selected = selected_room.as_ref() == Some(room);
+                                            let selected = app.selected_room.as_ref() == Some(room);
                                             if ui.selectable_label(selected, room).clicked() {
-                                                *selected_room = Some(room.to_string());
-                                                info!("{:?}", selected_room);
+                                                app.selected_room = Some(room.to_string());
+                                                info!("{:?}", app.selected_room);
 
                                                 let name = room.to_string();
-                                                let tx = tx.clone();
-                                                let task = spawner.spawn_local(async move {
+                                                let tx = app.tx.clone();
+                                                let task = app.spawner.spawn_local(async move {
                                                     let uasset =
                                                         three_d_asset::io::load_async(&[format!(
                                                             "rma/{name}.uasset"
@@ -456,7 +451,7 @@ fn draw_panel(
                                                     info!("{rma:?}");
                                                     tx.send((rma, asset)).unwrap();
                                                 });
-                                                task_handles.push(task);
+                                                app.task_handles.push(task);
                                             }
                                         }
                                         ui.allocate_space(ui.available_size());
@@ -472,14 +467,14 @@ fn draw_panel(
                         ui.group(|ui| {
                             ui.heading("Room Features");
                             egui::ScrollArea::vertical().show(ui, |ui| {
-                                if let Some(rma) = &rma {
+                                if let Some(rma) = &app.rma {
                                     let mut path = vec![];
                                     features(
                                         ui,
                                         &mut path,
                                         &rma.0.room_features,
-                                        states,
-                                        selected_feature,
+                                        &mut app.states,
+                                        &mut app.selected_feature,
                                         &mut deferred_select,
                                     );
                                 }
@@ -488,14 +483,14 @@ fn draw_panel(
                         });
                     });
                 });
-                let mut path_iter = selected_feature.iter();
+                let mut path_iter = app.selected_feature.iter();
                 if let Some(first) = path_iter.next() {
                     strip.cell(|ui| {
                         ui.push_id("edit feature", |ui| {
                             ui.group(|ui| {
                                 ui.heading("Edit Feature");
                                 egui::ScrollArea::vertical().show(ui, |ui| {
-                                    let Some(rma) = rma else { return };
+                                    let Some(rma) = &mut app.rma else { return };
                                     let mut feature = &mut rma.0.room_features[*first];
                                     for feature_index in path_iter {
                                         feature = &mut feature.room_features_mut()[*feature_index];
@@ -504,11 +499,11 @@ fn draw_panel(
 
                                     if changed {
                                         //states.clear();
-                                        *primitives = Some(build_primitives(
+                                        app.primitives = Some(build_primitives(
                                             &RMAContext {
-                                                context,
-                                                wireframe_material: wireframe_material.clone(),
-                                                wireframe_mesh: wireframe_mesh.clone(),
+                                                context: &app.context,
+                                                wireframe_material: app.wireframe_material.clone(),
+                                                wireframe_mesh: app.wireframe_mesh.clone(),
                                             },
                                             &rma.0,
                                         ));
@@ -521,7 +516,7 @@ fn draw_panel(
                     });
                 }
                 if !deferred_select.is_empty() {
-                    *selected_feature = deferred_select;
+                    app.selected_feature = deferred_select;
                 }
             });
         });
