@@ -571,6 +571,9 @@ fn draw_gizmo(
                 while app.gizmos.len() > gizmos.len() {
                     app.gizmos.pop();
                 }
+
+                let mut already_interacted = false;
+
                 for ((start, cb), gizmo) in gizmos.into_iter().zip(app.gizmos.iter_mut()) {
                     let vec = start;
 
@@ -607,7 +610,10 @@ fn draw_gizmo(
                             [vec.x.0 as f64, vec.y.0 as f64, vec.z.0 as f64],
                         );
 
-                    if let Some((result, new_transforms)) = gizmo.gizmo.interact(ui, &[transform]) {
+                    if let Some((result, new_transforms)) =
+                        gizmo.gizmo.interact2(ui, &[transform], !already_interacted)
+                    {
+                        already_interacted = true;
                         *clear_events = true;
 
                         for (new_transform, transform) in
@@ -631,6 +637,82 @@ fn draw_gizmo(
                 }
             })
         });
+}
+
+pub trait GizmoExt2 {
+    /// Version of Gizmo interact that can have input disabled
+    /// needed to prevent overlapping gizmos from handling the same input
+    fn interact2(
+        &mut self,
+        ui: &egui::Ui,
+        targets: &[transform_gizmo_egui::math::Transform],
+        enable: bool,
+    ) -> Option<(GizmoResult, Vec<transform_gizmo_egui::math::Transform>)>;
+}
+
+impl GizmoExt2 for Gizmo {
+    fn interact2(
+        &mut self,
+        ui: &egui::Ui,
+        targets: &[transform_gizmo_egui::math::Transform],
+        enable: bool,
+    ) -> Option<(GizmoResult, Vec<transform_gizmo_egui::math::Transform>)> {
+        let config = self.config();
+
+        let egui_viewport = egui::Rect {
+            min: egui::Pos2::new(config.viewport.min.x, config.viewport.min.y),
+            max: egui::Pos2::new(config.viewport.max.x, config.viewport.max.y),
+        };
+
+        let cursor_pos = ui
+            .input(|input| input.pointer.hover_pos())
+            .unwrap_or_default();
+
+        let mut viewport = self.config().viewport;
+        if !viewport.is_finite() {
+            viewport = ui.clip_rect();
+        }
+
+        self.update_config(GizmoConfig {
+            viewport,
+            pixels_per_point: ui.ctx().pixels_per_point(),
+            ..*self.config()
+        });
+
+        let gizmo_result = self.update(
+            transform_gizmo_egui::GizmoInteraction {
+                cursor_pos: (cursor_pos.x, cursor_pos.y),
+                drag_started: ui.input(|input| {
+                    enable && input.pointer.button_pressed(egui::PointerButton::Primary)
+                }),
+                dragging: ui.input(|input| {
+                    enable && input.pointer.button_down(egui::PointerButton::Primary)
+                }),
+            },
+            targets,
+        );
+
+        let draw_data = self.draw();
+
+        ui.painter()
+            .with_clip_rect(egui_viewport)
+            .add(egui::epaint::Mesh {
+                indices: draw_data.indices,
+                vertices: draw_data
+                    .vertices
+                    .into_iter()
+                    .zip(draw_data.colors)
+                    .map(|(pos, [r, g, b, a])| egui::epaint::Vertex {
+                        pos: pos.into(),
+                        uv: egui::Pos2::default(),
+                        color: egui::Rgba::from_rgba_premultiplied(r, g, b, a).into(),
+                    })
+                    .collect(),
+                ..Default::default()
+            });
+
+        gizmo_result
+    }
 }
 
 fn save<C: std::io::Read + std::io::Seek>(asset: &mut Asset<C>, rma: &RoomGenerator) -> Result<()> {
