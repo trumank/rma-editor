@@ -3,6 +3,7 @@ use crate as rma;
 
 use anyhow::Result;
 use futures::future::ok;
+use futures::task::LocalSpawnExt;
 use log::info;
 use rma::read_rma;
 use rma::AppMode;
@@ -128,8 +129,6 @@ pub fn run(mode: AppMode) -> Result<()> {
         AppMode::Gallery { paths: _ } => None,
     };
 
-    use futures::task::LocalSpawnExt;
-
     let mut ex = futures::executor::LocalPool::new();
     let spawner = ex.spawner();
 
@@ -183,15 +182,6 @@ pub fn run(mode: AppMode) -> Result<()> {
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-    struct State {
-        visible: bool,
-    }
-    impl Default for State {
-        fn default() -> Self {
-            Self { visible: true }
-        }
-    }
-
     let mut gui = three_d::GUI::new(&context);
     let mut states = HashMap::<Vec<usize>, State>::new();
     let mut selected_room = None;
@@ -213,11 +203,16 @@ pub fn run(mode: AppMode) -> Result<()> {
         if let Ok(new_rma) = rx.try_recv() {
             rma = Some(new_rma);
             states.clear();
-            primitives = rma.as_ref().map(|rma| build_primitives(&RMAContext {
-                context: &context,
-                wireframe_material: wireframe_material.clone(),
-                wireframe_mesh: wireframe_mesh.clone(),
-            }, &rma.0));
+            primitives = rma.as_ref().map(|rma| {
+                build_primitives(
+                    &RMAContext {
+                        context: &context,
+                        wireframe_material: wireframe_material.clone(),
+                        wireframe_mesh: wireframe_mesh.clone(),
+                    },
+                    &rma.0,
+                )
+            });
         }
 
         let panel_width = 300.0;
@@ -240,183 +235,31 @@ pub fn run(mode: AppMode) -> Result<()> {
             frame_input.viewport,
             frame_input.device_pixel_ratio,
             |gui_context| {
-                use three_d::egui::*;
-                SidePanel::left("side_panel")
-                    .resizable(false)
-                    .min_width(panel_width)
-                    .max_width(panel_width)
-                    .show(gui_context, |ui| {
+                draw_panel(
+                    &gui_context,
+                    panel_width,
+                    &mut rma,
+                    &mode,
+                    &mut selected_room,
+                    &mut selected_feature,
+                    &tx,
+                    &spawner,
+                    &mut task_handles,
+                    &mut states,
+                    &context,
+                    &wireframe_material,
+                    &wireframe_mesh,
+                    &mut primitives,
+                );
 
-
-                        use three_d::egui::*;
-                        ui.heading("Debug Panel");
-                        if let Some(rma) = rma.as_mut() {
-                            if ui.button("save").clicked() {
-                                save(&mut rma.1, &rma.0).unwrap();
-                            }
-                        }
-                        fn features(
-                            ui: &mut Ui,
-                            path: &mut Vec<usize>,
-                            f: &[RoomFeature],
-                            states: &mut HashMap<Vec<usize>, State>,
-                            selected_feature: &mut Vec<usize>,
-                            deferred_select: &mut Vec<usize>,
-                        ) {
-                            path.push(0);
-                            for (i, f) in f.iter().enumerate() {
-                                *path.last_mut().unwrap() = i;
-
-                                let id = ui.make_persistent_id(i);
-                                egui::collapsing_header::CollapsingState::load_with_default_open(
-                                    ui.ctx(),
-                                    id,
-                                    true,
-                                )
-                                .show_header(ui, |ui| {
-                                    ui.checkbox(
-                                        &mut states.entry(path.clone()).or_default().visible,
-                                        ""
-                                    );
-                                    let mut checked = path == selected_feature;
-                                    //println!("{path:?} {selected_feature:?}");
-                                    if ui.toggle_value(&mut checked, f.name()).changed() && checked {
-                                        println!("{path:?} asdf");
-                                        deferred_select.clone_from(path);
-                                    }
-                                })
-                                .body(|ui| features(ui, path, &f.base().room_features, states, selected_feature, deferred_select));
-                            }
-                            path.pop();
-                        }
-
-                        let rooms = match &mode {
-                            AppMode::Gallery { paths } => Some(paths),
-                            AppMode::Editor { .. } => None,
-                        };
-
-                        let mut strip = egui_extras::StripBuilder::new(ui);
-                        let mut num_cells = 1;
-                        if rooms.is_some() {
-                            num_cells += 1;
-                        }
-                        if !selected_feature.is_empty() {
-                            num_cells += 1;
-                        }
-                        for _ in 0..num_cells {
-                            strip = strip.size(egui_extras::Size::relative(1. / num_cells as f32));
-                        }
-                        strip.vertical(|mut strip| {
-                            if let Some(rooms) = rooms {
-                                strip.cell(|ui| {
-                                    ui.push_id("rooms", |ui| {
-                                        ui.group(|ui| {
-                                            ui.heading("Rooms");
-                                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                                ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
-                                                    for room in rooms {
-                                                        let selected = selected_room.as_ref() == Some(room);
-                                                        if ui.selectable_label(selected, room).clicked() {
-                                                            selected_room = Some(room.to_string());
-                                                            info!("{:?}", selected_room);
-
-                                                            let name = room.to_string();
-                                                            let tx = tx.clone();
-                                                            let task = spawner.spawn_local(async move {
-                                                                let uasset = three_d_asset::io::load_async(&[format!("rma/{name}.uasset")])
-                                                                    .await
-                                                                    .unwrap();
-                                                                let uexp = three_d_asset::io::load_async(&[format!("rma/{name}.uexp")])
-                                                                    .await
-                                                                    .unwrap();
-
-                                                                let version = EngineVersion::VER_UE4_27;
-                                                                let uasset = Cursor::new(uasset.get("").unwrap().to_vec());
-                                                                let uexp = Cursor::new(uexp.get("").unwrap().to_vec());
-                                                                let asset = Asset::new(uasset, Some(uexp), version, None, false).unwrap();
-
-                                                                let rma = read_rma(&asset).unwrap();
-
-                                                                info!("{rma:?}");
-                                                                tx.send((rma, asset)).unwrap();
-                                                            });
-                                                            task_handles.push(task);
-                                                        }
-                                                    }
-                                                ui.allocate_space(ui.available_size());
-                                                });
-                                            });
-                                        });
-                                    });
-                                });
-                            }
-                            let mut deferred_select = vec![];
-                            strip.cell(|ui| {
-                                ui.push_id("features", |ui| {
-                                    ui.group(|ui| {
-                                        ui.heading("Room Features");
-                                        egui::ScrollArea::vertical().show(ui, |ui| {
-                                            if let Some(rma) = &rma {
-                                                let mut path = vec![];
-                                                features(
-                                                    ui,
-                                                    &mut path,
-                                                    &rma.0.room_features,
-                                                    &mut states,
-                                                    &mut selected_feature,
-                                                    &mut deferred_select,
-                                                );
-                                            }
-                                            ui.allocate_space(ui.available_size());
-                                        });
-                                    });
-                                });
-                            });
-                            let mut path_iter = selected_feature.iter();
-                            if let Some(first) = path_iter.next() {
-                                strip.cell(|ui| {
-                                    ui.push_id("edit feature", |ui| {
-                                        ui.group(|ui| {
-                                            ui.heading("Edit Feature");
-                                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                                let Some(rma) = &mut rma else { return };
-                                                let mut feature = &mut rma.0.room_features[*first];
-                                                for feature_index in path_iter {
-                                                    feature = &mut feature.room_features_mut()[*feature_index];
-                                                }
-                                                let changed = feature.ui(ui);
-
-                                                if changed {
-                                                    //states.clear();
-                                                    primitives = Some(build_primitives(&RMAContext {
-                                                        context: &context,
-                                                        wireframe_material: wireframe_material.clone(),
-                                                        wireframe_mesh: wireframe_mesh.clone(),
-                                                    }, &rma.0));
-                                                }
-
-                                                ui.allocate_space(ui.available_size());
-                                            });
-                                        });
-                                    });
-                                });
-                            }
-                            if !deferred_select.is_empty() {
-                                selected_feature = deferred_select;
-                            }
-                        });
-                    });
-
-
-                let viewport = Rect::from_min_max(
+                let viewport = egui::Rect::from_min_max(
                     (panel_width, 0.).into(),
-                    pos2(
+                    egui::pos2(
                         frame_input.viewport.width as f32,
                         frame_input.viewport.height as f32,
                     ) / frame_input.device_pixel_ratio,
                 );
                 draw_gizmo(&gui_context, viewport, &mut gizmo, &mut clear_events);
-
             },
         );
 
@@ -461,12 +304,228 @@ pub fn run(mode: AppMode) -> Result<()> {
                     })),
                 &[&light0, &light1],
             )
-            .write(|| gui.render());
+            .write(|| gui.render())
+            .unwrap();
 
         FrameOutput::default()
     });
 
     Ok(())
+}
+
+struct State {
+    visible: bool,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self { visible: true }
+    }
+}
+
+fn draw_panel(
+    ctx: &egui::Context,
+    panel_width: f32,
+    rma: &mut Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
+    mode: &AppMode,
+    selected_room: &mut Option<String>,
+    selected_feature: &mut Vec<usize>,
+    tx: &std::sync::mpsc::Sender<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
+    spawner: &futures::executor::LocalSpawner,
+    task_handles: &mut Vec<Result<(), futures::task::SpawnError>>,
+    states: &mut HashMap<Vec<usize>, State>,
+    context: &three_d::core::Context,
+    wireframe_material: &PhysicalMaterial,
+    wireframe_mesh: &CpuMesh,
+    primitives: &mut Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
+) {
+    use three_d::egui::*;
+    SidePanel::left("side_panel")
+        .resizable(false)
+        .min_width(panel_width)
+        .max_width(panel_width)
+        .show(ctx, |ui| {
+            ui.heading("Debug Panel");
+            if let Some(rma) = rma.as_mut() {
+                if ui.button("save").clicked() {
+                    save(&mut rma.1, &rma.0).unwrap();
+                }
+            }
+            fn features(
+                ui: &mut Ui,
+                path: &mut Vec<usize>,
+                f: &[RoomFeature],
+                states: &mut HashMap<Vec<usize>, State>,
+                selected_feature: &mut Vec<usize>,
+                deferred_select: &mut Vec<usize>,
+            ) {
+                path.push(0);
+                for (i, f) in f.iter().enumerate() {
+                    *path.last_mut().unwrap() = i;
+
+                    let id = ui.make_persistent_id(i);
+                    egui::collapsing_header::CollapsingState::load_with_default_open(
+                        ui.ctx(),
+                        id,
+                        true,
+                    )
+                    .show_header(ui, |ui| {
+                        ui.checkbox(&mut states.entry(path.clone()).or_default().visible, "");
+                        let mut checked = path == selected_feature;
+                        //println!("{path:?} {selected_feature:?}");
+                        if ui.toggle_value(&mut checked, f.name()).changed() && checked {
+                            println!("{path:?} asdf");
+                            deferred_select.clone_from(path);
+                        }
+                    })
+                    .body(|ui| {
+                        features(
+                            ui,
+                            path,
+                            &f.base().room_features,
+                            states,
+                            selected_feature,
+                            deferred_select,
+                        )
+                    });
+                }
+                path.pop();
+            }
+
+            let rooms = match &mode {
+                AppMode::Gallery { paths } => Some(paths),
+                AppMode::Editor { .. } => None,
+            };
+
+            let mut strip = egui_extras::StripBuilder::new(ui);
+            let mut num_cells = 1;
+            if rooms.is_some() {
+                num_cells += 1;
+            }
+            if !selected_feature.is_empty() {
+                num_cells += 1;
+            }
+            for _ in 0..num_cells {
+                strip = strip.size(egui_extras::Size::relative(1. / num_cells as f32));
+            }
+            strip.vertical(|mut strip| {
+                if let Some(rooms) = rooms {
+                    strip.cell(|ui| {
+                        ui.push_id("rooms", |ui| {
+                            ui.group(|ui| {
+                                ui.heading("Rooms");
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    ui.with_layout(Layout::top_down_justified(Align::LEFT), |ui| {
+                                        for room in rooms {
+                                            let selected = selected_room.as_ref() == Some(room);
+                                            if ui.selectable_label(selected, room).clicked() {
+                                                *selected_room = Some(room.to_string());
+                                                info!("{:?}", selected_room);
+
+                                                let name = room.to_string();
+                                                let tx = tx.clone();
+                                                let task = spawner.spawn_local(async move {
+                                                    let uasset =
+                                                        three_d_asset::io::load_async(&[format!(
+                                                            "rma/{name}.uasset"
+                                                        )])
+                                                        .await
+                                                        .unwrap();
+                                                    let uexp =
+                                                        three_d_asset::io::load_async(&[format!(
+                                                            "rma/{name}.uexp"
+                                                        )])
+                                                        .await
+                                                        .unwrap();
+
+                                                    let version = EngineVersion::VER_UE4_27;
+                                                    let uasset = Cursor::new(
+                                                        uasset.get("").unwrap().to_vec(),
+                                                    );
+                                                    let uexp =
+                                                        Cursor::new(uexp.get("").unwrap().to_vec());
+                                                    let asset = Asset::new(
+                                                        uasset,
+                                                        Some(uexp),
+                                                        version,
+                                                        None,
+                                                        false,
+                                                    )
+                                                    .unwrap();
+
+                                                    let rma = read_rma(&asset).unwrap();
+
+                                                    info!("{rma:?}");
+                                                    tx.send((rma, asset)).unwrap();
+                                                });
+                                                task_handles.push(task);
+                                            }
+                                        }
+                                        ui.allocate_space(ui.available_size());
+                                    });
+                                });
+                            });
+                        });
+                    });
+                }
+                let mut deferred_select = vec![];
+                strip.cell(|ui| {
+                    ui.push_id("features", |ui| {
+                        ui.group(|ui| {
+                            ui.heading("Room Features");
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                if let Some(rma) = &rma {
+                                    let mut path = vec![];
+                                    features(
+                                        ui,
+                                        &mut path,
+                                        &rma.0.room_features,
+                                        states,
+                                        selected_feature,
+                                        &mut deferred_select,
+                                    );
+                                }
+                                ui.allocate_space(ui.available_size());
+                            });
+                        });
+                    });
+                });
+                let mut path_iter = selected_feature.iter();
+                if let Some(first) = path_iter.next() {
+                    strip.cell(|ui| {
+                        ui.push_id("edit feature", |ui| {
+                            ui.group(|ui| {
+                                ui.heading("Edit Feature");
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    let Some(rma) = rma else { return };
+                                    let mut feature = &mut rma.0.room_features[*first];
+                                    for feature_index in path_iter {
+                                        feature = &mut feature.room_features_mut()[*feature_index];
+                                    }
+                                    let changed = feature.ui(ui);
+
+                                    if changed {
+                                        //states.clear();
+                                        *primitives = Some(build_primitives(
+                                            &RMAContext {
+                                                context: &context,
+                                                wireframe_material: wireframe_material.clone(),
+                                                wireframe_mesh: wireframe_mesh.clone(),
+                                            },
+                                            &rma.0,
+                                        ));
+                                    }
+
+                                    ui.allocate_space(ui.available_size());
+                                });
+                            });
+                        });
+                    });
+                }
+                if !deferred_select.is_empty() {
+                    *selected_feature = deferred_select;
+                }
+            });
+        });
 }
 
 #[derive(Default)]
