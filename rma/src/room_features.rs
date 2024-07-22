@@ -3,11 +3,12 @@ use three_d::{
     PhysicalMaterial,
 };
 use three_d_asset::{vec2, vec3, Angle, InnerSpace, Mat4, Quat, Radians, Srgba, Vector3};
+use transform_gizmo_egui::GizmoMode;
 
 use crate::{
     rma::{
-        DropPodCalldownLocationFeature, ECaveEntranceType, EntranceFeature, FVector, FloodFillBox,
-        FloodFillLine, FloodFillPillar, SpawnActorFeature,
+        DropPodCalldownLocationFeature, ECaveEntranceType, EntranceFeature, FTransform, FVector,
+        FloodFillBox, FloodFillLine, FloodFillPillar, SpawnActorFeature,
     },
     RMAContext,
 };
@@ -30,7 +31,11 @@ impl ChangedTrait for bool {
     }
 }
 
-pub type Gizmos<'s> = Vec<(FVector, Box<dyn FnOnce(FVector) + 's>)>;
+pub type Gizmos<'s> = Vec<(
+    enumset::EnumSet<GizmoMode>,
+    FTransform,
+    Box<dyn FnOnce(FTransform) + 's>,
+)>;
 pub trait RoomFeatureTrait {
     fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>>;
     fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool;
@@ -92,7 +97,31 @@ impl RoomFeatureTrait for FloodFillPillar {
     }
     fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
         ui.label("FloodFillPillar");
-        false
+
+        let mut changed = false;
+        list_editor(ui, &mut self.points, |ui, point| {
+            let mut changed = false;
+            ui.horizontal(|ui| {
+                vector3(ui, &mut point.location).c(&mut changed);
+            });
+            changed
+        })
+        .c(&mut changed);
+
+        for p in &mut self.points {
+            gizmos.push((
+                GizmoMode::all_translate().union(GizmoMode::all_scale()),
+                FTransform {
+                    translation: p.location,
+                    ..Default::default()
+                },
+                Box::new(|t| {
+                    p.location = t.translation;
+                }),
+            ));
+        }
+
+        changed
     }
 }
 
@@ -252,9 +281,21 @@ impl RoomFeatureTrait for FloodFillLine {
 
         for p in &mut self.points {
             gizmos.push((
-                p.location,
-                Box::new(|vec| {
-                    p.location = vec;
+                GizmoMode::all_translate().union(GizmoMode::all_scale() - GizmoMode::ScaleY),
+                FTransform {
+                    translation: p.location,
+                    Scale3D: FVector {
+                        x: p.h_range,
+                        y: p.h_range,
+                        z: p.v_range,
+                    },
+                    ..Default::default()
+                },
+                Box::new(|t| {
+                    p.location = t.translation;
+                    p.h_range = t.Scale3D.x;
+                    p.h_range = t.Scale3D.x;
+                    p.v_range = t.Scale3D.z;
                 }),
             ));
         }
@@ -363,9 +404,13 @@ impl RoomFeatureTrait for EntranceFeature {
             });
 
         gizmos.push((
-            self.location.clone(),
-            Box::new(|vec| {
-                self.location = vec;
+            GizmoMode::all_translate(),
+            FTransform {
+                translation: self.location,
+                ..Default::default()
+            },
+            Box::new(|t| {
+                self.location = t.translation;
             }),
         ));
 
@@ -411,6 +456,19 @@ impl RoomFeatureTrait for DropPodCalldownLocationFeature {
         vec![Box::new(sphere)]
     }
     fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        todo!()
+        ui.label("DropPodCalldownLocationFeature");
+
+        gizmos.push((
+            GizmoMode::all_translate(),
+            FTransform {
+                translation: self.location,
+                ..Default::default()
+            },
+            Box::new(|t| {
+                self.location = t.translation;
+            }),
+        ));
+
+        false
     }
 }

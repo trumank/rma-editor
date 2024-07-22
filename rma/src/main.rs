@@ -5,16 +5,14 @@ use anyhow::Result;
 use futures::task::LocalSpawnExt;
 use log::info;
 use rma::read_rma;
+use rma::rma::FQuat;
+use rma::rma::FTransform;
+use rma::rma::FVector;
 use rma::room_features::Gizmos;
 use rma::AppMode;
 use three_d::*;
-use transform_gizmo_egui::math::DMat4;
-use transform_gizmo_egui::math::DQuat;
-use transform_gizmo_egui::math::DVec3;
 use transform_gizmo_egui::Gizmo;
 use transform_gizmo_egui::GizmoConfig;
-use transform_gizmo_egui::GizmoExt as _;
-use transform_gizmo_egui::GizmoMode;
 use transform_gizmo_egui::GizmoOrientation;
 use transform_gizmo_egui::GizmoResult;
 use unreal_asset::engine_version::EngineVersion;
@@ -143,7 +141,7 @@ struct App {
     wireframe_mesh: CpuMesh,
     primitives: Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
     camera: Camera,
-    gizmos: Vec<GizmoWrapper>,
+    gizmos: Vec<Gizmo>,
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
@@ -210,15 +208,8 @@ pub fn run(mode: AppMode) -> Result<()> {
     let mut gui = three_d::GUI::new(&context);
     let (tx, rx) = mpsc::channel();
 
-    let mut gizmo = GizmoWrapper {
-        scale: DVec3::ONE,
-        rotation: DQuat::IDENTITY,
-        translation: DVec3::ZERO,
-        ..Default::default()
-    };
-
     let mut app = App {
-        panel_width: 300.0,
+        panel_width: 400.0,
         primitives: rma.as_ref().map(|rma| build_primitives(&rma_ctx, &rma.0)),
         //rma,
         mode,
@@ -544,14 +535,6 @@ fn draw_panel<'g>(
         });
 }
 
-#[derive(Default)]
-struct GizmoWrapper {
-    gizmo: Gizmo,
-    scale: DVec3,
-    rotation: DQuat,
-    translation: DVec3,
-}
-
 fn draw_gizmo(
     ctx: &egui::Context,
     viewport: egui::Rect,
@@ -574,9 +557,7 @@ fn draw_gizmo(
 
                 let mut already_interacted = false;
 
-                for ((start, cb), gizmo) in gizmos.into_iter().zip(app.gizmos.iter_mut()) {
-                    let vec = start;
-
+                for ((modes, start, cb), gizmo) in gizmos.into_iter().zip(app.gizmos.iter_mut()) {
                     pub fn convert_mat4_to_mint(
                         mat: &Mat4,
                     ) -> transform_gizmo_egui::mint::RowMatrix4<f64> {
@@ -593,11 +574,11 @@ fn draw_gizmo(
                     // Fixed camera position
                     let snapping = ui.input(|input| input.modifiers.ctrl);
 
-                    gizmo.gizmo.update_config(GizmoConfig {
+                    gizmo.update_config(GizmoConfig {
                         view_matrix: convert_mat4_to_mint(app.camera.view()),
                         projection_matrix: convert_mat4_to_mint(app.camera.projection()),
                         viewport,
-                        modes: GizmoMode::all_translate(),
+                        modes,
                         orientation: GizmoOrientation::Local,
                         snapping,
                         ..Default::default()
@@ -605,13 +586,26 @@ fn draw_gizmo(
 
                     let mut transform =
                         transform_gizmo_egui::math::Transform::from_scale_rotation_translation(
-                            gizmo.scale,
-                            gizmo.rotation,
-                            [vec.x.0 as f64, vec.y.0 as f64, vec.z.0 as f64],
+                            [
+                                start.Scale3D.x.0 as f64,
+                                start.Scale3D.y.0 as f64,
+                                start.Scale3D.z.0 as f64,
+                            ],
+                            [
+                                start.rotation.x.0 as f64,
+                                start.rotation.y.0 as f64,
+                                start.rotation.z.0 as f64,
+                                start.rotation.w.0 as f64,
+                            ],
+                            [
+                                start.translation.x.0 as f64,
+                                start.translation.y.0 as f64,
+                                start.translation.z.0 as f64,
+                            ],
                         );
 
-                    if let Some((result, new_transforms)) =
-                        gizmo.gizmo.interact2(ui, &[transform], !already_interacted)
+                    if let Some((_result, new_transforms)) =
+                        gizmo.interact2(ui, &[transform], !already_interacted)
                     {
                         already_interacted = true;
                         *clear_events = true;
@@ -622,16 +616,25 @@ fn draw_gizmo(
                             *transform = *new_transform;
                         }
 
-                        gizmo.scale = transform.scale.into();
-                        gizmo.rotation = transform.rotation.into();
-                        //gizmo.translation = transform.translation.into();
-
                         *changed = true;
 
-                        cb(rma::rma::FVector {
-                            x: (transform.translation.x as f32).into(),
-                            y: (transform.translation.y as f32).into(),
-                            z: (transform.translation.z as f32).into(),
+                        cb(FTransform {
+                            translation: FVector {
+                                x: (transform.translation.x as f32).into(),
+                                y: (transform.translation.y as f32).into(),
+                                z: (transform.translation.z as f32).into(),
+                            },
+                            rotation: FQuat {
+                                x: (transform.rotation.v.x as f32).into(),
+                                y: (transform.rotation.v.y as f32).into(),
+                                z: (transform.rotation.v.z as f32).into(),
+                                w: (transform.rotation.s as f32).into(),
+                            },
+                            Scale3D: FVector {
+                                x: (transform.scale.x as f32).into(),
+                                y: (transform.scale.y as f32).into(),
+                                z: (transform.scale.z as f32).into(),
+                            },
                         });
                     }
                 }
@@ -743,7 +746,8 @@ fn save<C: std::io::Read + std::io::Seek>(asset: &mut Asset<C>, rma: &RoomGenera
         }
     }
 
-    let new_path = std::path::Path::new("RMA_CarverA.uasset");
+    let new_path =
+        std::path::Path::new("test-pak/FSD/Content/Maps/Rooms/RoomGenerators/RMA_CarverA.uasset");
     asset.write_data(
         &mut std::fs::File::create(new_path)?,
         Some(&mut std::fs::File::create(new_path.with_extension("uexp"))?),

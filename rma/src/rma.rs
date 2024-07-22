@@ -173,7 +173,7 @@ impl<C: Seek + Read> ToExport<C> for RoomFeature {
             RoomFeature::FloodFillBox(_) => todo!(),
             RoomFeature::FloodFillProceduralPillar => todo!(),
             RoomFeature::SpawnTriggerFeature(_) => todo!(),
-            RoomFeature::FloodFillPillar(_) => todo!(),
+            RoomFeature::FloodFillPillar(f) => f.to_export(ctx),
             RoomFeature::RandomSelector(f) => f.to_export(ctx),
             RoomFeature::EntranceFeature(f) => f.to_export(ctx),
             RoomFeature::RandomSubRoomFeature => todo!(),
@@ -181,7 +181,7 @@ impl<C: Seek + Read> ToExport<C> for RoomFeature {
             RoomFeature::FloodFillLine(f) => f.to_export(ctx),
             RoomFeature::ResourceFeature(_) => todo!(),
             RoomFeature::SubRoomFeature => todo!(),
-            RoomFeature::DropPodCalldownLocationFeature(_) => todo!(),
+            RoomFeature::DropPodCalldownLocationFeature(f) => f.to_export(ctx),
         }
     }
 }
@@ -251,6 +251,7 @@ pub struct FRandRange {
     Serialize,
     FromProperty,
     FromProperties,
+    ToProperty,
     ToProperties,
 )]
 pub struct FRandLinePoint {
@@ -262,7 +263,18 @@ pub struct FRandLinePoint {
 }
 
 #[derive(
-    Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, FromExport, FromProperties,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Serialize,
+    FromExport,
+    FromProperties,
+    ToExport,
+    ToProperties,
 )]
 pub struct FloodFillPillar {
     #[serde(flatten)]
@@ -272,6 +284,35 @@ pub struct FloodFillPillar {
     pub range_scale: FRandRange,
     pub noise_range_scale: FRandRange,
     pub endcap_scale: FRandRange,
+}
+impl<C: Read + Seek> BaseExportGetter<C> for FloodFillPillar {
+    fn base_export(&self, ctx: &mut CtxSer<C>) -> Result<BaseExport> {
+        const NAME: &str = "FloodFillPillar";
+        const CLASS: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/CoreUObject",
+            class_name: "Class",
+            object_name: NAME,
+        };
+        const CDO: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/FSD",
+            class_name: NAME,
+            object_name: "Default__FloodFillPillar",
+        };
+        let class_index = get_import(ctx.asset, &CLASS);
+        let template_index = get_import(ctx.asset, &CDO);
+        let object_name = ctx
+            .asset
+            .add_fname_with_number(NAME, ctx.name_counter.next(NAME));
+        Ok(BaseExport {
+            class_index: ctx.ser_dep(class_index),
+            template_index: ctx.ser_dep(template_index),
+            object_name,
+            not_always_loaded_for_editor_game: true,
+            ..Default::default()
+        })
+    }
 }
 
 #[derive(
@@ -607,6 +648,7 @@ pub enum ECaveEntrancePriority {
 
 impl<C: Read + Seek> FromProperty<C> for ECaveEntrancePriority {
     fn from_property(_asset: &Asset<C>, property: &Property) -> Result<Self> {
+        dbg!(&property);
         match property {
             Property::EnumProperty(property) => property.value.as_ref().unwrap().get_content(|c| {
                 Ok(match c {
@@ -642,8 +684,8 @@ impl<C: Read + Seek> ToProperty<C> for ECaveEntrancePriority {
                     ECaveEntrancePriority::Primary => "ECaveEntrancePriority::Primary",
                     ECaveEntrancePriority::Secondary => "ECaveEntrancePriority::Secondary",
                 })),
-                enum_type: todo!(),
-                inner_type: todo!(),
+                enum_type: Some(ctx.asset.add_fname("ECaveEntrancePriority")),
+                inner_type: None,
             }
             .into(),
         ))
@@ -853,13 +895,53 @@ pub struct SpawnActorFeature {
 }
 
 #[derive(
-    Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, FromExport, FromProperties,
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    FromExport,
+    FromProperties,
+    ToExport,
+    ToProperties,
 )]
 pub struct DropPodCalldownLocationFeature {
     #[serde(flatten)]
     pub base: RoomFeatureBase,
     pub location: FVector,
     pub call_down_class: (), // TSubclassOf<AActor>
+}
+impl<C: Read + Seek> BaseExportGetter<C> for DropPodCalldownLocationFeature {
+    fn base_export(&self, ctx: &mut CtxSer<C>) -> Result<BaseExport> {
+        const NAME: &str = "DropPodCalldownLocationFeature";
+        const CLASS: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/CoreUObject",
+            class_name: "Class",
+            object_name: NAME,
+        };
+        const CDO: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/FSD",
+            class_name: NAME,
+            object_name: "Default__DropPodCalldownLocation",
+        };
+        let class_index = get_import(ctx.asset, &CLASS);
+        let template_index = get_import(ctx.asset, &CDO);
+        let object_name = ctx
+            .asset
+            .add_fname_with_number(NAME, ctx.name_counter.next(NAME));
+        Ok(BaseExport {
+            class_index: ctx.ser_dep(class_index),
+            template_index: ctx.ser_dep(template_index),
+            object_name,
+            not_always_loaded_for_editor_game: true,
+            ..Default::default()
+        })
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize)]

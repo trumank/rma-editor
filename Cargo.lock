@@ -2335,6 +2335,7 @@ dependencies = [
  "console_error_panic_hook",
  "console_log",
  "egui_extras",
+ "enumset",
  "futures",
  "log",
  "ordered-float 4.2.0",
