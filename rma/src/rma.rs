@@ -575,26 +575,30 @@ impl<C: Read + Seek> ToProperty<C> for FTransform {
         name: unreal_asset::types::FName,
         ancestry: unreal_asset::unversioned::Ancestry,
     ) -> Result<Option<Property>> {
+        let struct_type = ctx.asset.add_fname("Transform");
+        let child_ancestry = ancestry.with_parent(struct_type.clone());
+        let rotation = ctx.asset.add_fname("Rotation");
+        let translation = ctx.asset.add_fname("Translation");
+        let scale = ctx.asset.add_fname("Scale3D");
         Ok(Some(Property::StructProperty(StructProperty {
             name: name.clone(),
             ancestry: ancestry.clone(),
-            struct_type: Some(ctx.asset.add_fname("Transform")),
+            struct_type: Some(struct_type),
             struct_guid: Some(Default::default()),
             property_guid: None,
             duplication_index: 0,
             serialize_none: true,
-            value: vec![StructProperty {
-                name,
-                ancestry,
-                property_guid: None,
-                duplication_index: 0,
-                value: Vector {
-                    x: (self.translation.x.0 as f64).into(),
-                    y: (self.translation.y.0 as f64).into(),
-                    z: (self.translation.z.0 as f64).into(),
-                },
-            }
-            .into()],
+            value: vec![
+                self.rotation
+                    .to_property(ctx, rotation, child_ancestry.clone())?
+                    .unwrap(),
+                self.translation
+                    .to_property(ctx, translation, child_ancestry.clone())?
+                    .unwrap(),
+                self.Scale3D
+                    .to_property(ctx, scale, child_ancestry)?
+                    .unwrap(),
+            ],
         })))
     }
 }

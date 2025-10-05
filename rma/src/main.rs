@@ -827,7 +827,7 @@ mod test {
     fn test_read_small() -> Result<()> {
         use std::fmt::Write;
 
-        let path = std::path::Path::new("../assets/rma/RMA_2PValley.uasset");
+        let path = std::path::Path::new("../assets/rma/RMA_NewTutorial02B_Combat.uasset");
         let mut asset_orig = read_asset(path, EngineVersion::VER_UE4_27)?;
         let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
 
