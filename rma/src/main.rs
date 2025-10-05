@@ -781,6 +781,49 @@ mod test {
     }
 
     #[test]
+    fn test_save_all() -> Result<()> {
+        for path in std::fs::read_dir("../assets/rma")? {
+            let path = path?.path();
+            if path.extension() == Some(OsStr::new("uasset")) {
+                println!("{:?}", path.display());
+                let mut asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
+                let rma = read_rma(&asset)
+                    .with_context(|| format!("parsing asset {:?}", path.display()))?;
+                println!("{rma:?}");
+
+                use rma_lib::{CtxSer, NameCounter, ToExport as _};
+                use unreal_asset::{exports::ExportBaseTrait, types::PackageIndex};
+
+                asset.asset_data.exports.clear();
+                asset.imports.clear();
+
+                let mut name_counter = NameCounter::default();
+                let pi = dbg!(rma.to_export(&mut CtxSer::new(&mut asset, &mut name_counter))?);
+
+                let name = asset.add_fname("RMA_CarverA");
+                asset
+                    .asset_data
+                    .exports
+                    .last_mut()
+                    .unwrap()
+                    .get_base_export_mut()
+                    .object_name = name;
+
+                for (i, export) in asset.asset_data.exports.iter_mut().enumerate() {
+                    let i = PackageIndex::from_export(i as i32).unwrap();
+                    if i != pi {
+                        let base = export.get_base_export_mut();
+                        base.outer_index = pi;
+                        base.create_before_create_dependencies.push(pi);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
     fn test_read_small() -> Result<()> {
         use std::fmt::Write;
 

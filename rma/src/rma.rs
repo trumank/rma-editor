@@ -16,7 +16,7 @@ use unreal_asset::properties::struct_property::StructProperty;
 use unreal_asset::properties::vector_property::{QuatProperty, RotatorProperty, VectorProperty};
 use unreal_asset::properties::Property;
 use unreal_asset::reader::ArchiveTrait;
-use unreal_asset::types::vector::{Vector, Vector4};
+use unreal_asset::types::vector::{Transform, Vector, Vector4};
 use unreal_asset::types::PackageIndex;
 use unreal_asset::Asset;
 
@@ -170,16 +170,16 @@ impl<C: Seek + Read> FromExport<C> for RoomFeature {
 impl<C: Seek + Read> ToExport<C> for RoomFeature {
     fn to_export(&self, ctx: &mut CtxSer<C>) -> Result<PackageIndex> {
         match self {
-            RoomFeature::FloodFillBox(_) => todo!(),
+            RoomFeature::FloodFillBox(f) => f.to_export(ctx),
             RoomFeature::FloodFillProceduralPillar => todo!(),
-            RoomFeature::SpawnTriggerFeature(_) => todo!(),
+            RoomFeature::SpawnTriggerFeature(f) => f.to_export(ctx),
             RoomFeature::FloodFillPillar(f) => f.to_export(ctx),
             RoomFeature::RandomSelector(f) => f.to_export(ctx),
             RoomFeature::EntranceFeature(f) => f.to_export(ctx),
             RoomFeature::RandomSubRoomFeature => todo!(),
-            RoomFeature::SpawnActorFeature(_) => todo!(),
+            RoomFeature::SpawnActorFeature(f) => f.to_export(ctx),
             RoomFeature::FloodFillLine(f) => f.to_export(ctx),
-            RoomFeature::ResourceFeature(_) => todo!(),
+            RoomFeature::ResourceFeature(f) => f.to_export(ctx),
             RoomFeature::SubRoomFeature => todo!(),
             RoomFeature::DropPodCalldownLocationFeature(f) => f.to_export(ctx),
         }
@@ -197,21 +197,62 @@ impl<C: Seek + Read> ToExport<C> for RoomFeature {
     Serialize,
     FromExport,
     FromProperties,
+    ToExport,
     ToProperties,
 )]
 pub struct FloodFillBox {
     #[serde(flatten)]
     pub base: RoomFeatureBase,
-    pub noise: Option<bool>, // TODO import Option<UFloodFillSettings>,
+    pub noise: (), // TODO import Option<UFloodFillSettings>,
     pub position: FVector,
     pub extends: FVector,
     pub rotation: FRotator,
     pub is_carver: bool,
     pub noise_range: OrderedFloat<f32>,
 }
+impl<C: Read + Seek> BaseExportGetter<C> for FloodFillBox {
+    fn base_export(&self, ctx: &mut CtxSer<C>) -> Result<BaseExport> {
+        const NAME: &str = "FloodFillBox";
+        const CLASS: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/CoreUObject",
+            class_name: "Class",
+            object_name: NAME,
+        };
+        const CDO: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/FSD",
+            class_name: NAME,
+            object_name: "Default__FloodFillBox",
+        };
+        let class_index = get_import(ctx.asset, &CLASS);
+        let template_index = get_import(ctx.asset, &CDO);
+        let object_name = ctx
+            .asset
+            .add_fname_with_number(NAME, ctx.name_counter.next(NAME));
+        Ok(BaseExport {
+            class_index: ctx.ser_dep(class_index),
+            template_index: ctx.ser_dep(template_index),
+            object_name,
+            not_always_loaded_for_editor_game: true,
+            ..Default::default()
+        })
+    }
+}
 
 #[derive(
-    Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, FromExport, FromProperties,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Clone,
+    Serialize,
+    FromExport,
+    FromProperties,
+    ToExport,
+    ToProperties,
 )]
 pub struct SpawnTriggerFeature {
     #[serde(flatten)]
@@ -219,6 +260,35 @@ pub struct SpawnTriggerFeature {
     pub trigger_class: (), //Option<TSubclassOf<AActor>>
     pub transform: FTransform,
     pub message: FName,
+}
+impl<C: Read + Seek> BaseExportGetter<C> for SpawnTriggerFeature {
+    fn base_export(&self, ctx: &mut CtxSer<C>) -> Result<BaseExport> {
+        const NAME: &str = "SpawnTriggerFeature";
+        const CLASS: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/CoreUObject",
+            class_name: "Class",
+            object_name: NAME,
+        };
+        const CDO: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/FSD",
+            class_name: NAME,
+            object_name: "Default__SpawnTriggerFeature",
+        };
+        let class_index = get_import(ctx.asset, &CLASS);
+        let template_index = get_import(ctx.asset, &CDO);
+        let object_name = ctx
+            .asset
+            .add_fname_with_number(NAME, ctx.name_counter.next(NAME));
+        Ok(BaseExport {
+            class_index: ctx.ser_dep(class_index),
+            template_index: ctx.ser_dep(template_index),
+            object_name,
+            not_always_loaded_for_editor_game: true,
+            ..Default::default()
+        })
+    }
 }
 
 #[derive(
@@ -495,6 +565,39 @@ pub struct FTransform {
     pub rotation: FQuat,
     pub Scale3D: FVector,
 }
+impl<C: Read + Seek> ToProperty<C> for FTransform {
+    fn get_type() -> Option<&'static str> {
+        Some("StructProperty")
+    }
+    fn to_property(
+        &self,
+        ctx: &mut CtxSer<C>,
+        name: unreal_asset::types::FName,
+        ancestry: unreal_asset::unversioned::Ancestry,
+    ) -> Result<Option<Property>> {
+        Ok(Some(Property::StructProperty(StructProperty {
+            name: name.clone(),
+            ancestry: ancestry.clone(),
+            struct_type: Some(ctx.asset.add_fname("Transform")),
+            struct_guid: Some(Default::default()),
+            property_guid: None,
+            duplication_index: 0,
+            serialize_none: true,
+            value: vec![StructProperty {
+                name,
+                ancestry,
+                property_guid: None,
+                duplication_index: 0,
+                value: Vector {
+                    x: (self.translation.x.0 as f64).into(),
+                    y: (self.translation.y.0 as f64).into(),
+                    z: (self.translation.z.0 as f64).into(),
+                },
+            }
+            .into()],
+        })))
+    }
+}
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct FQuat {
@@ -512,7 +615,7 @@ impl<C: Read + Seek> FromProperty<C> for FQuat {
                     x: (property.value.x.0 as f32).into(),
                     y: (property.value.y.0 as f32).into(),
                     z: (property.value.z.0 as f32).into(),
-                    w: (property.value.z.0 as f32).into(),
+                    w: (property.value.w.0 as f32).into(),
                 }),
                 _ => bail!("{property:?}"),
             },
@@ -631,8 +734,8 @@ impl<C: Read + Seek> ToProperty<C> for ECaveEntranceType {
                     ECaveEntranceType::Exit => "ECaveEntranceType::Exit",
                     ECaveEntranceType::TreassureRoom => "ECaveEntranceType::TreassureRoom",
                 })),
-                enum_type: todo!(),
-                inner_type: todo!(),
+                enum_type: Some(ctx.asset.add_fname("ECaveEntranceType")),
+                inner_type: None,
             }
             .into(),
         ))
@@ -844,7 +947,18 @@ impl<C: Read + Seek> BaseExportGetter<C> for FloodFillLine {
 }
 
 #[derive(
-    Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, FromExport, FromProperties,
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    FromExport,
+    FromProperties,
+    ToExport,
+    ToProperties,
 )]
 pub struct ResourceFeature {
     #[serde(flatten)]
@@ -852,6 +966,35 @@ pub struct ResourceFeature {
     pub location: FVector,
     pub resource: (), // Option<UResourceData>,
     pub base_amount: OrderedFloat<f32>,
+}
+impl<C: Read + Seek> BaseExportGetter<C> for ResourceFeature {
+    fn base_export(&self, ctx: &mut CtxSer<C>) -> Result<BaseExport> {
+        const NAME: &str = "ResourceFeature";
+        const CLASS: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/CoreUObject",
+            class_name: "Class",
+            object_name: NAME,
+        };
+        const CDO: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/FSD",
+            class_name: NAME,
+            object_name: "Default__ResourceFeature",
+        };
+        let class_index = get_import(ctx.asset, &CLASS);
+        let template_index = get_import(ctx.asset, &CDO);
+        let object_name = ctx
+            .asset
+            .add_fname_with_number(NAME, ctx.name_counter.next(NAME));
+        Ok(BaseExport {
+            class_index: ctx.ser_dep(class_index),
+            template_index: ctx.ser_dep(template_index),
+            object_name,
+            not_always_loaded_for_editor_game: true,
+            ..Default::default()
+        })
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -878,9 +1021,52 @@ impl<C: Read + Seek> FromProperty<C> for EItemAdjustmentType {
         }
     }
 }
+impl<C: Read + Seek> ToProperty<C> for EItemAdjustmentType {
+    fn get_type() -> Option<&'static str> {
+        todo!()
+    }
+    fn to_property(
+        &self,
+        ctx: &mut CtxSer<C>,
+        name: unreal_asset::types::FName,
+        ancestry: unreal_asset::unversioned::Ancestry,
+    ) -> Result<Option<Property>> {
+        if *self == Self::default() {
+            return Ok(None);
+        }
+        Ok(Some(
+            EnumProperty {
+                name,
+                ancestry,
+                property_guid: None,
+                duplication_index: 0,
+                value: Some(ctx.asset.add_fname(match self {
+                    EItemAdjustmentType::None => "EItemAdjustmentType::None",
+                    EItemAdjustmentType::Cieling => "EItemAdjustmentType::Cieling",
+                    EItemAdjustmentType::Wall => "EItemAdjustmentType::Wall",
+                    EItemAdjustmentType::Floor => "EItemAdjustmentType::Floor",
+                })),
+                enum_type: Some(ctx.asset.add_fname("EItemAdjustmentType")),
+                inner_type: None,
+            }
+            .into(),
+        ))
+    }
+}
 
 #[derive(
-    Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, FromExport, FromProperties,
+    Debug,
+    Default,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    FromExport,
+    FromProperties,
+    ToExport,
+    ToProperties,
 )]
 pub struct SpawnActorFeature {
     #[serde(flatten)]
@@ -892,6 +1078,35 @@ pub struct SpawnActorFeature {
     pub scale_min: FVector,
     pub scale_max: FVector,
     pub rotation_delta: FRotator,
+}
+impl<C: Read + Seek> BaseExportGetter<C> for SpawnActorFeature {
+    fn base_export(&self, ctx: &mut CtxSer<C>) -> Result<BaseExport> {
+        const NAME: &str = "SpawnActorFeature";
+        const CLASS: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/CoreUObject",
+            class_name: "Class",
+            object_name: NAME,
+        };
+        const CDO: ImportChain = ImportChain {
+            outer: Some(&FSD_PACKAGE),
+            class_package: "/Script/FSD",
+            class_name: NAME,
+            object_name: "Default__SpawnActorFeature",
+        };
+        let class_index = get_import(ctx.asset, &CLASS);
+        let template_index = get_import(ctx.asset, &CDO);
+        let object_name = ctx
+            .asset
+            .add_fname_with_number(NAME, ctx.name_counter.next(NAME));
+        Ok(BaseExport {
+            class_index: ctx.ser_dep(class_index),
+            template_index: ctx.ser_dep(template_index),
+            object_name,
+            not_always_loaded_for_editor_game: true,
+            ..Default::default()
+        })
+    }
 }
 
 #[derive(
@@ -981,7 +1196,23 @@ impl<C: Read + Seek> ToProperty<C> for ERoomMirroringSupport {
         if *self == Self::default() {
             return Ok(None);
         }
-        todo!()
+        Ok(Some(
+            EnumProperty {
+                name,
+                ancestry,
+                property_guid: None,
+                duplication_index: 0,
+                value: Some(ctx.asset.add_fname(match self {
+                    ERoomMirroringSupport::NotAllowed => "ERoomMirroringSupport::NotAllowed",
+                    ERoomMirroringSupport::MirrorAroundX => "ERoomMirroringSupport::MirrorAroundX",
+                    ERoomMirroringSupport::MirrorAroundY => "ERoomMirroringSupport::MirrorAroundY",
+                    ERoomMirroringSupport::MirrorBoth => "ERoomMirroringSupport::MirrorBoth",
+                })),
+                enum_type: Some(ctx.asset.add_fname("ERoomMirroringSupport")),
+                inner_type: None,
+            }
+            .into(),
+        ))
     }
 }
 
