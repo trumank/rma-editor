@@ -16,7 +16,7 @@ use unreal_asset::properties::struct_property::StructProperty;
 use unreal_asset::properties::vector_property::{QuatProperty, RotatorProperty, VectorProperty};
 use unreal_asset::properties::Property;
 use unreal_asset::reader::ArchiveTrait;
-use unreal_asset::types::vector::{Transform, Vector, Vector4};
+use unreal_asset::types::vector::{Vector, Vector4};
 use unreal_asset::types::PackageIndex;
 use unreal_asset::Asset;
 

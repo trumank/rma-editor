@@ -125,7 +125,7 @@ impl Default for State {
     }
 }
 
-type RMA = Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>;
+type Rma = Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>;
 struct App {
     panel_width: f32,
     //rma: Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
@@ -353,7 +353,7 @@ pub fn run(mode: AppMode) -> Result<()> {
 fn draw_panel<'g>(
     ctx: &egui::Context,
     app: &mut App,
-    rma: &'g mut RMA,
+    rma: &'g mut Rma,
     changed: &mut bool,
     gizmos: &mut Gizmos<'g>,
 ) {
@@ -618,7 +618,7 @@ fn draw_gizmo(
 
                         *changed = true;
 
-                        cb(FTransform {
+                        let new_transform = FTransform {
                             translation: FVector {
                                 x: (transform.translation.x as f32).into(),
                                 y: (transform.translation.y as f32).into(),
@@ -635,7 +635,11 @@ fn draw_gizmo(
                                 y: (transform.scale.y as f32).into(),
                                 z: (transform.scale.z as f32).into(),
                             },
-                        });
+                        };
+                        println!("Gizmo transform: translation=({}, {}, {}), scale=({}, {}, {})",
+                            new_transform.translation.x, new_transform.translation.y, new_transform.translation.z,
+                            new_transform.Scale3D.x, new_transform.Scale3D.y, new_transform.Scale3D.z);
+                        cb(new_transform);
                     }
                 }
             })

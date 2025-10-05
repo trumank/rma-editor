@@ -150,7 +150,32 @@ impl RoomFeatureTrait for SpawnActorFeature {
         vec![Box::new(obj)]
     }
     fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        todo!()
+        let mut changed = false;
+
+        ui.label("SpawnActorFeature");
+
+        egui::Grid::new("grid")
+            .num_columns(2)
+            .spacing([40.0, 4.0])
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("location");
+                vector3(ui, &mut self.location).c(&mut changed);
+                ui.end_row();
+            });
+
+        gizmos.push((
+            GizmoMode::all_translate(),
+            FTransform {
+                translation: self.location,
+                ..Default::default()
+            },
+            Box::new(|t| {
+                self.location = t.translation;
+            }),
+        ));
+
+        changed
     }
 }
 
