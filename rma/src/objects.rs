@@ -181,7 +181,7 @@ pub struct FGameplayTagQuery {}
 #[serde(rename_all = "PascalCase")]
 pub struct FGameplayTagContainer(pub BTreeSet<String>);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::EnumIter)]
 #[repr(u8)]
 pub enum ECaveEntranceType {
     EntranceAndExit = 0,
@@ -190,14 +190,14 @@ pub enum ECaveEntranceType {
     TreassureRoom = 3,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::EnumIter)]
 #[repr(u8)]
 pub enum ECaveEntrancePriority {
     Primary = 0,
     Secondary = 1,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::EnumIter)]
 #[repr(u8)]
 pub enum EItemAdjustmentType {
     None = 0,
@@ -206,7 +206,7 @@ pub enum EItemAdjustmentType {
     Floor = 3,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::EnumIter)]
 #[repr(u8)]
 pub enum ERoomMirroringSupport {
     NotAllowed = 0,

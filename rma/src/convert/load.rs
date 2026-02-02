@@ -47,8 +47,8 @@ fn load_room_generator_base(props: &Properties<AssetArchiveType>) -> URoomGenera
 /// Load a FGameplayTagContainer from properties
 fn load_gameplay_tag_container(props: &Properties<AssetArchiveType>) -> FGameplayTagContainer {
     // GameplayTags are stored in a nested struct with a GameplayTags array
-    if let Some(tag_struct) = get_prop!(props, "RoomTags" => Struct) {
-        if let Some(tags_array) = get_prop!(tag_struct, "GameplayTags" => Struct) {
+    if let Some(tag_struct) = get_prop!(props, "RoomTags" => Struct)
+        && let Some(tags_array) = get_prop!(tag_struct, "GameplayTags" => Struct) {
             // Try to extract tag names from the array
             let mut tags = BTreeSet::new();
             for (_key, prop) in tags_array.0.iter() {
@@ -58,7 +58,6 @@ fn load_gameplay_tag_container(props: &Properties<AssetArchiveType>) -> FGamepla
             }
             return FGameplayTagContainer(tags);
         }
-    }
     FGameplayTagContainer(BTreeSet::new())
 }
 

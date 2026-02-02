@@ -8,9 +8,9 @@ use three_d::{
 };
 use transform_gizmo_egui::GizmoMode;
 
+use super::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
 use crate::RMAContext;
 use crate::objects::*;
-use super::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
 
 // Wireframe visualization constants
 const CIRCLE_SEGMENTS: usize = 40;
@@ -335,53 +335,142 @@ pub fn feature_type_name(feature: &URoomFeatureType) -> &'static str {
 
 /// Build editor UI for a room feature
 pub fn edit_feature<'s>(
-    feature: &URoomFeature,
+    feature: &mut URoomFeature,
     ui: &mut egui::Ui,
     _gizmos: &mut Gizmos<'s>,
 ) -> bool {
+    use super::property_editors::*;
+
     ui.label(format!(
         "Feature: {}",
         feature_type_name(&feature.feature_type)
     ));
+    ui.separator();
 
-    match &feature.feature_type {
+    let mut changed = false;
+
+    match &mut feature.feature_type {
         URoomFeatureType::FloodFillBox(f) => {
-            ui.label(format!("Position: {:?}", f.position));
-            ui.label(format!("Extends: {:?}", f.extends));
-            false
+            changed |= edit_fvector(ui, "Position", &mut f.position);
+            changed |= edit_fvector(ui, "Extends", &mut f.extends);
+            changed |= edit_frotator(ui, "Rotation", &mut f.rotation);
+            changed |= edit_bool(ui, "Is Carver", &mut f.is_carver);
+            changed |= edit_f32(ui, "Noise Range", &mut f.noise_range);
         }
 
         URoomFeatureType::FloodFillPillar(f) => {
-            ui.label(format!("Points: {}", f.points.len()));
-            false
+            changed |= edit_frand_range(ui, "Range Scale", &mut f.range_scale);
+            changed |= edit_frand_range(ui, "Noise Range Scale", &mut f.noise_range_scale);
+            changed |= edit_frand_range(ui, "Endcap Scale", &mut f.endcap_scale);
+            changed |= edit_vec(
+                ui,
+                "Points",
+                &mut f.points,
+                || FRandLinePoint {
+                    location: FVector::default(),
+                    range: FRandRange {
+                        min: 100.0,
+                        max: 200.0,
+                    },
+                    noise_range: FRandRange {
+                        min: 0.0,
+                        max: 50.0,
+                    },
+                    skew_factor: FRandRange { min: 0.0, max: 0.0 },
+                    fill_amount: FRandRange { min: 1.0, max: 1.0 },
+                },
+                edit_rand_line_point,
+            );
         }
 
         URoomFeatureType::FloodFillLine(f) => {
-            ui.label(format!("Points: {}", f.points.len()));
-            false
+            changed |= edit_bool(ui, "Use Detail Noise", &mut f.use_detail_noise);
+            changed |= edit_vec(
+                ui,
+                "Points",
+                &mut f.points,
+                || FRoomLinePoint {
+                    location: FVector::default(),
+                    h_range: 200.0,
+                    v_range: 200.0,
+                    cieling_noise_range: 50.0,
+                    wall_noise_range: 50.0,
+                    floor_noise_range: 50.0,
+                    cieling_height: 100.0,
+                    height_scale: 1.0,
+                    floor_depth: 0.0,
+                    floor_angle: 0.0,
+                },
+                edit_room_line_point,
+            );
+        }
+
+        URoomFeatureType::FloodFillProceduralPillar(f) => {
+            changed |= edit_vec(
+                ui,
+                "Points",
+                &mut f.points,
+                FVector::default,
+                edit_fvector_point,
+            );
         }
 
         URoomFeatureType::Entrance(f) => {
-            ui.label(format!("Location: {:?}", f.location));
-            ui.label(format!("Type: {:?}", f.entrance_type));
-            false
+            changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_frotator(ui, "Direction", &mut f.direction);
+            changed |= edit_enum(ui, "Entrance Type", &mut f.entrance_type);
+            changed |= edit_enum(ui, "Priority", &mut f.priority);
+        }
+
+        URoomFeatureType::RandomSelector(f) => {
+            changed |= edit_i32(ui, "Min", &mut f.min);
+            changed |= edit_i32(ui, "Max", &mut f.max);
+        }
+
+        URoomFeatureType::RandomSubRoom(f) => {
+            changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_frotator(ui, "Rotation", &mut f.rotation);
+            changed |= edit_f32(ui, "Scale", &mut f.scale);
+            changed |= edit_i32(ui, "Layer", &mut f.layer);
+        }
+
+        URoomFeatureType::SubRoom(f) => {
+            changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_frotator(ui, "Rotation", &mut f.rotation);
+            changed |= edit_f32(ui, "Scale", &mut f.scale);
         }
 
         URoomFeatureType::SpawnActor(f) => {
-            ui.label(format!("Location: {:?}", f.location));
-            false
+            changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_fvector(ui, "Adjustment Direction", &mut f.adjustment_direction);
+            changed |= edit_enum(ui, "Adjustment", &mut f.adjustment);
+            changed |= edit_fvector(ui, "Scale Min", &mut f.scale_min);
+            changed |= edit_fvector(ui, "Scale Max", &mut f.scale_max);
+            changed |= edit_frotator(ui, "Rotation Delta", &mut f.rotation_delta);
+        }
+
+        URoomFeatureType::SpawnTrigger(f) => {
+            changed |= edit_string(ui, "Message", &mut f.message);
+            changed |= edit_fvector(ui, "Translation", &mut f.transform.translation);
+            let mut rotator: FRotator = f.transform.rotation.into();
+            if edit_frotator(ui, "Rotation", &mut rotator) {
+                f.transform.rotation = rotator.into();
+                changed = true;
+            }
+            changed |= edit_fvector(ui, "Scale", &mut f.transform.Scale3D);
+        }
+
+        URoomFeatureType::Resource(f) => {
+            changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_f32(ui, "Base Amount", &mut f.base_amount);
         }
 
         URoomFeatureType::DropPodCalldownLocation(f) => {
-            ui.label(format!("Location: {:?}", f.location));
-            false
-        }
-
-        _ => {
-            ui.label("(no editor available)");
-            false
+            changed |= edit_fvector(ui, "Location", &mut f.location);
         }
     }
+
+    changed
 }
 
 /// Axis-aligned bounding box with min/max corners

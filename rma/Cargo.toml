@@ -8,6 +8,7 @@ three-d = { git = "https://github.com/trumank/three-d", features = ["egui-gui"] 
 anyhow.workspace = true
 serde = { version = "1.0.203", features = ["derive"] }
 egui_extras = "0.32"
+strum = { version = "0.26", features = ["derive"] }
 log = "0.4"
 futures = "0.3.30"
 ordered-float = { version = "4.2.0", features = ["serde"] }
