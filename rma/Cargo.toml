@@ -17,6 +17,6 @@ futures = "0.3.30"
 ordered-float = { version = "4.2.0", features = ["serde"] }
 transform-gizmo-egui = "0.7.0"
 enumset = "1.1.3"
-asset_ser = { version = "0.1.0", path = "../../../../ue/asset_ser" }
+asset_ser = { path = "../asset_ser" }
 uesave = { git = "https://github.com/trumank/uesave", version = "0.7.0" }
 jmap = { git = "https://github.com/trumank/jmap", version = "0.1.0" }
