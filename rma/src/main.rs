@@ -2,14 +2,17 @@ use anyhow::Result;
 use log::info;
 use rma::AppMode;
 use rma::CameraMode;
+use rma::RenderMode;
 use rma::convert::load_room_generator;
 use rma::objects::{FQuat, FTransform, FVector, URoomFeature, URoomGenerator};
+use rma::scene::csg_mesh::{HasVisible, build_csg_from_features, csg_to_three_d_mesh};
 use rma::scene::fly_control::FlyControl;
 use rma::scene::room_features::Gizmos;
 use rma::scene::room_features::build_feature;
 use rma::scene::room_features::build_grid_planes;
 use rma::scene::room_features::compute_room_bounds;
 use rma::scene::room_features::feature_type_name;
+use rma::scene::room_features::is_mesh_primitive;
 use three_d::*;
 use transform_gizmo_egui::Gizmo;
 use transform_gizmo_egui::GizmoConfig;
@@ -53,11 +56,17 @@ fn build_primitives(
     room: &URoomGenerator,
     selected: &[usize],
     hovered: Option<&[usize]>,
+    render_mode: RenderMode,
 ) -> HashMap<Vec<usize>, Vec<Box<dyn Object>>> {
     let mut primitives = HashMap::new();
     let mut path = vec![];
 
     iter_features(&room.room_features, &mut path, &mut |f, path| {
+        // In CSG mode, skip mesh primitives (they're rendered as a single CSG mesh)
+        if render_mode == RenderMode::CsgMesh && is_mesh_primitive(&f.feature_type) {
+            return;
+        }
+
         // Determine highlight color based on selection/hover state
         let color = if hovered == Some(path) {
             Some(Srgba::new_opaque(255, 255, 100)) // Yellow for hover
@@ -74,12 +83,47 @@ fn build_primitives(
     primitives
 }
 
+/// Build the CSG mesh for all visible mesh primitives in the room
+fn build_csg_mesh_object(
+    ctx: &RMAContext,
+    room: &URoomGenerator,
+    states: &HashMap<Vec<usize>, State>,
+) -> Option<Box<dyn Object>> {
+    let csg = build_csg_from_features(room, states)?;
+    let cpu_mesh = csg_to_three_d_mesh(&csg);
+
+    let mesh = Mesh::new(ctx.context, &cpu_mesh);
+    let mut material = PhysicalMaterial::new_opaque(
+        ctx.context,
+        &CpuMaterial {
+            albedo: Srgba {
+                r: 150,
+                g: 100,
+                b: 80,
+                a: 255,
+            },
+            roughness: 0.8,
+            metallic: 0.0,
+            ..Default::default()
+        },
+    );
+    // One-sided mesh - cull front faces so cave interior is visible from outside
+    material.render_states.cull = Cull::Front;
+
+    Some(Box::new(Gm::new(mesh, material)))
+}
+
 struct State {
     visible: bool,
 }
 impl Default for State {
     fn default() -> Self {
         Self { visible: true }
+    }
+}
+impl HasVisible for State {
+    fn visible(&self) -> bool {
+        self.visible
     }
 }
 
@@ -101,11 +145,14 @@ struct App {
     wireframe_material: PhysicalMaterial,
     wireframe_mesh: CpuMesh,
     primitives: Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
+    csg_mesh: Option<Box<dyn Object>>,
     grid_objects: Vec<Box<dyn Object>>,
     camera: Camera,
     gizmos: Vec<Gizmo>,
     camera_mode: CameraMode,
     prev_camera_mode: CameraMode,
+    render_mode: RenderMode,
+    prev_render_mode: RenderMode,
     fly_control: FlyControl,
 }
 
@@ -176,9 +223,18 @@ pub fn run(mode: AppMode) -> Result<()> {
     let mut gui = three_d::GUI::new(&context);
     let (tx, rx) = mpsc::channel();
 
+    let render_mode = RenderMode::default();
     let primitives = room
         .as_ref()
-        .map(|r| build_primitives(&rma_ctx, r, &[], None));
+        .map(|r| build_primitives(&rma_ctx, r, &[], None, render_mode));
+
+    let empty_states: HashMap<Vec<usize>, State> = HashMap::new();
+    let csg_mesh = if render_mode == RenderMode::CsgMesh {
+        room.as_ref()
+            .and_then(|r| build_csg_mesh_object(&rma_ctx, r, &empty_states))
+    } else {
+        None
+    };
 
     let grid_objects = room
         .as_ref()
@@ -192,6 +248,7 @@ pub fn run(mode: AppMode) -> Result<()> {
         panel_width: 400.0,
         room,
         primitives,
+        csg_mesh,
         grid_objects,
         mode,
         selected_room: None,
@@ -210,6 +267,8 @@ pub fn run(mode: AppMode) -> Result<()> {
         gizmos: vec![],
         camera_mode: CameraMode::default(),
         prev_camera_mode: CameraMode::default(),
+        render_mode,
+        prev_render_mode: render_mode,
         fly_control: FlyControl::default(),
     };
 
@@ -230,8 +289,16 @@ pub fn run(mode: AppMode) -> Result<()> {
                     r,
                     &app.selected_feature,
                     app.hovered_feature.as_deref(),
+                    app.render_mode,
                 )
             });
+            app.csg_mesh = if app.render_mode == RenderMode::CsgMesh {
+                app.room
+                    .as_ref()
+                    .and_then(|r| build_csg_mesh_object(&ctx, r, &app.states))
+            } else {
+                None
+            };
             app.grid_objects = app
                 .room
                 .as_ref()
@@ -285,16 +352,18 @@ pub fn run(mode: AppMode) -> Result<()> {
                 }
 
                 if changed {
+                    let ctx = RMAContext {
+                        context: &app.context,
+                        wireframe_material: app.wireframe_material.clone(),
+                        wireframe_mesh: app.wireframe_mesh.clone(),
+                    };
                     app.primitives = app.room.as_ref().map(|r| {
                         build_primitives(
-                            &RMAContext {
-                                context: &app.context,
-                                wireframe_material: app.wireframe_material.clone(),
-                                wireframe_mesh: app.wireframe_mesh.clone(),
-                            },
+                            &ctx,
                             r,
                             &app.selected_feature,
                             app.hovered_feature.as_deref(),
+                            app.render_mode,
                         )
                     });
                 }
@@ -311,18 +380,46 @@ pub fn run(mode: AppMode) -> Result<()> {
         if selection_changed || hover_changed {
             app.prev_selected_feature = app.selected_feature.clone();
             app.prev_hovered_feature = app.hovered_feature.clone();
+            let ctx = RMAContext {
+                context: &app.context,
+                wireframe_material: app.wireframe_material.clone(),
+                wireframe_mesh: app.wireframe_mesh.clone(),
+            };
             app.primitives = app.room.as_ref().map(|r| {
                 build_primitives(
-                    &RMAContext {
-                        context: &app.context,
-                        wireframe_material: app.wireframe_material.clone(),
-                        wireframe_mesh: app.wireframe_mesh.clone(),
-                    },
+                    &ctx,
                     r,
                     &app.selected_feature,
                     app.hovered_feature.as_deref(),
+                    app.render_mode,
                 )
             });
+        }
+
+        // Rebuild when render mode changes
+        if app.render_mode != app.prev_render_mode {
+            app.prev_render_mode = app.render_mode;
+            let ctx = RMAContext {
+                context: &app.context,
+                wireframe_material: app.wireframe_material.clone(),
+                wireframe_mesh: app.wireframe_mesh.clone(),
+            };
+            app.primitives = app.room.as_ref().map(|r| {
+                build_primitives(
+                    &ctx,
+                    r,
+                    &app.selected_feature,
+                    app.hovered_feature.as_deref(),
+                    app.render_mode,
+                )
+            });
+            app.csg_mesh = if app.render_mode == RenderMode::CsgMesh {
+                app.room
+                    .as_ref()
+                    .and_then(|r| build_csg_mesh_object(&ctx, r, &app.states))
+            } else {
+                None
+            };
         }
 
         // Compute delta time
@@ -357,6 +454,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                 &app.camera,
                 axes.into_iter()
                     .chain(app.grid_objects.iter().map(|o| o.deref()))
+                    .chain(app.csg_mesh.iter().map(|o| o.deref()))
                     .chain(app.primitives.iter().flatten().flat_map(|(path, p)| {
                         // Only render visible primitives
                         app.states
@@ -403,6 +501,14 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
             }
             ui.separator();
 
+            // Render mode selector
+            ui.horizontal(|ui| {
+                ui.label("Render:");
+                ui.selectable_value(&mut app.render_mode, RenderMode::Wireframe, "Wireframe");
+                ui.selectable_value(&mut app.render_mode, RenderMode::CsgMesh, "CSG Mesh");
+            });
+            ui.separator();
+
             // TODO: Implement save using asset_ser::saver::save_asset
             // if pool.is_some() && root_handle.is_some() && ui.button("save").clicked() {
             //     ui.label("Save not yet implemented with asset_ser");
@@ -417,6 +523,7 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                 selected_feature: &mut Vec<usize>,
                 deferred_select: &mut Vec<usize>,
                 hovered_feature: &mut Option<Vec<usize>>,
+                visibility_changed: &mut bool,
             ) {
                 path.push(0);
                 for (i, f) in f.iter().enumerate() {
@@ -433,6 +540,9 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                         .show_header(ui, |ui| {
                             let checkbox = ui
                                 .checkbox(&mut states.entry(path.clone()).or_default().visible, "");
+                            if checkbox.changed() {
+                                *visibility_changed = true;
+                            }
                             if checkbox.hovered() {
                                 is_hovered = true;
                             }
@@ -455,6 +565,7 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                                 selected_feature,
                                 deferred_select,
                                 hovered_feature,
+                                visibility_changed,
                             )
                         });
 
@@ -507,6 +618,7 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                     });
                 }
                 let mut deferred_select = vec![];
+                let mut visibility_changed = false;
                 strip.cell(|ui| {
                     ui.push_id("features", |ui| {
                         ui.group(|ui| {
@@ -523,6 +635,7 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                                         &mut app.selected_feature,
                                         &mut deferred_select,
                                         &mut app.hovered_feature,
+                                        &mut visibility_changed,
                                     );
                                 }
                                 ui.allocate_space(ui.available_size());
@@ -530,6 +643,19 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                         });
                     });
                 });
+
+                // Rebuild CSG mesh when visibility changes in CSG mode
+                if visibility_changed && app.render_mode == RenderMode::CsgMesh {
+                    let ctx = RMAContext {
+                        context: &app.context,
+                        wireframe_material: app.wireframe_material.clone(),
+                        wireframe_mesh: app.wireframe_mesh.clone(),
+                    };
+                    app.csg_mesh = app
+                        .room
+                        .as_ref()
+                        .and_then(|r| build_csg_mesh_object(&ctx, r, &app.states));
+                }
 
                 // Edit feature panel
                 if !app.selected_feature.is_empty() {
@@ -556,11 +682,11 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                                     if let Some(room) = &mut app.room
                                         && let Some(feature) =
                                             get_feature_by_path_mut(room, &app.selected_feature)
-                                        {
-                                            *changed |= rma::scene::room_features::edit_feature(
-                                                feature, ui, gizmos,
-                                            );
-                                        }
+                                    {
+                                        *changed |= rma::scene::room_features::edit_feature(
+                                            feature, ui, gizmos,
+                                        );
+                                    }
                                     ui.allocate_space(ui.available_size());
                                 });
                             });

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 three-d = { git = "https://github.com/trumank/three-d", features = ["egui-gui"] }
+csgrs = "0.16.0"
 anyhow.workspace = true
 serde = { version = "1.0.203", features = ["derive"] }
 egui_extras = "0.32"

@@ -10,6 +10,13 @@ pub enum CameraMode {
     Fly,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RenderMode {
+    #[default]
+    Wireframe,
+    CsgMesh,
+}
+
 #[cfg(target_arch = "wasm32")]
 mod main;
 

@@ -315,6 +315,17 @@ pub fn build_feature(
     }
 }
 
+/// Check if a feature type is a mesh primitive (carves terrain)
+pub fn is_mesh_primitive(feature: &URoomFeatureType) -> bool {
+    matches!(
+        feature,
+        URoomFeatureType::FloodFillBox(_)
+            | URoomFeatureType::FloodFillLine(_)
+            | URoomFeatureType::FloodFillPillar(_)
+            | URoomFeatureType::FloodFillProceduralPillar(_)
+    )
+}
+
 /// Get the display name for a feature type
 pub fn feature_type_name(feature: &URoomFeatureType) -> &'static str {
     match feature {
