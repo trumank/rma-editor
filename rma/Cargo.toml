@@ -21,3 +21,4 @@ asset_ser = { path = "../asset_ser" }
 uesave = { git = "https://github.com/trumank/uesave", version = "0.7.0" }
 jmap = { git = "https://github.com/trumank/jmap", version = "0.1.0" }
 cgmath = "0.18.0"
+notify = "7"

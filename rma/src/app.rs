@@ -2,7 +2,6 @@ use anyhow::Result;
 use log::info;
 use rma::AppMode;
 use rma::RenderMode;
-use rma::convert::load_room_generator;
 use rma::objects::{FQuat, FTransform, FVector, URoomFeature, URoomGenerator};
 use rma::scene::csg_mesh::{HasVisible, build_csg_from_features, csg_to_three_d_mesh};
 use rma::scene::fly_control::{Camera, CameraControl};
@@ -18,12 +17,12 @@ use transform_gizmo_egui::GizmoConfig;
 use transform_gizmo_egui::GizmoOrientation;
 use transform_gizmo_egui::GizmoResult;
 
-use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
-
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::mpsc;
+
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
 use rma::RMAContext;
 
@@ -121,12 +120,14 @@ struct App {
     panel_width: f32,
     mode: AppMode,
     room: Option<URoomGenerator>,
+    load_error: Option<String>,
     selected_room: Option<String>,
     selected_feature: Vec<usize>,
     prev_selected_feature: Vec<usize>,
     hovered_feature: Option<Vec<usize>>,
     prev_hovered_feature: Option<Vec<usize>>,
-    _tx: std::sync::mpsc::Sender<(ObjectPool, ObjectHandle)>,
+    _tx: std::sync::mpsc::Sender<()>,
+    _watcher: Option<RecommendedWatcher>,
     _spawner: futures::executor::LocalSpawner,
     _task_handles: Vec<Result<(), futures::task::SpawnError>>,
     states: HashMap<Vec<usize>, State>,
@@ -144,9 +145,12 @@ struct App {
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
-    let room = match &mode {
-        AppMode::Editor { path } => rma::load_room(Path::new(path)).ok(),
-        AppMode::Gallery { paths: _ } => None,
+    let (room, load_error) = match &mode {
+        AppMode::Editor { path } => match rma::load_room(Path::new(path)) {
+            Ok(room) => (Some(room), None),
+            Err(e) => (None, Some(format!("{e:#}"))),
+        },
+        AppMode::Gallery { paths: _ } => (None, None),
     };
 
     let mut ex = futures::executor::LocalPool::new();
@@ -206,7 +210,43 @@ pub fn run(mode: AppMode) -> Result<()> {
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, vec3(0.0, 0.5, 0.5));
 
     let mut gui = three_d::GUI::new(&context);
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel::<()>();
+
+    // Set up file watcher for editor mode
+    // Watch the parent directory because editors often delete and recreate files on save
+    let watcher = if let AppMode::Editor { path } = &mode {
+        let tx = tx.clone();
+        let watch_path = Path::new(path)
+            .canonicalize()
+            .expect("failed to canonicalize path");
+        let watch_dir = watch_path
+            .parent()
+            .expect("file has no parent directory")
+            .to_path_buf();
+        let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, _>| {
+            if let Ok(event) = res {
+                let dominated = event
+                    .paths
+                    .iter()
+                    .any(|p| p.canonicalize().is_ok_and(|p| p == watch_path));
+                if dominated
+                    && matches!(
+                        event.kind,
+                        notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+                    )
+                {
+                    let _ = tx.send(());
+                }
+            }
+        })
+        .expect("failed to create file watcher");
+        watcher
+            .watch(&watch_dir, RecursiveMode::NonRecursive)
+            .expect("failed to watch directory");
+        Some(watcher)
+    } else {
+        None
+    };
 
     let render_mode = RenderMode::default();
     let primitives = room
@@ -232,6 +272,7 @@ pub fn run(mode: AppMode) -> Result<()> {
     let mut app = App {
         panel_width: 400.0,
         room,
+        load_error,
         primitives,
         csg_mesh,
         grid_objects,
@@ -242,6 +283,7 @@ pub fn run(mode: AppMode) -> Result<()> {
         hovered_feature: None,
         prev_hovered_feature: None,
         _tx: tx,
+        _watcher: watcher,
         _spawner: ex.spawner(),
         _task_handles: vec![],
         states: HashMap::new(),
@@ -258,8 +300,19 @@ pub fn run(mode: AppMode) -> Result<()> {
     window.render_loop(move |mut frame_input| {
         ex.run_until_stalled();
 
-        if let Ok((new_pool, new_handle)) = rx.try_recv() {
-            app.room = load_room_generator(&new_pool, new_handle).ok();
+        if rx.try_recv().is_ok() {
+            if let AppMode::Editor { path } = &app.mode {
+                match rma::load_room(Path::new(path)) {
+                    Ok(room) => {
+                        app.room = Some(room);
+                        app.load_error = None;
+                    }
+                    Err(e) => {
+                        app.room = None;
+                        app.load_error = Some(format!("{e:#}"));
+                    }
+                }
+            }
             app.states.clear();
             let ctx = RMAContext {
                 context: &app.context,
@@ -496,15 +549,24 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
             });
             ui.separator();
 
+            // Display load error if any
+            if let Some(error) = &app.load_error {
+                ui.colored_label(egui::Color32::RED, "Load error:");
+                ui.label(error);
+                ui.separator();
+            }
+
             if let AppMode::Editor { path } = &app.mode
-                && app.room.is_some() && ui.button("Save").clicked()
-                    && let Some(room) = &app.room {
-                        if let Err(e) = rma::save_room(Path::new(path), room) {
-                            eprintln!("Failed to save: {}", e);
-                        } else {
-                            eprintln!("Saved to {}", path);
-                        }
-                    }
+                && app.room.is_some()
+                && ui.button("Save").clicked()
+                && let Some(room) = &app.room
+            {
+                if let Err(e) = rma::save_room(Path::new(path), room) {
+                    eprintln!("Failed to save: {}", e);
+                } else {
+                    eprintln!("Saved to {}", path);
+                }
+            }
 
             #[allow(clippy::too_many_arguments)]
             fn features(
