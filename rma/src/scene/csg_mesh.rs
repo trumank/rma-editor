@@ -11,7 +11,8 @@ use three_d::{CpuMesh, Indices, Positions, Vector3, vec3};
 
 use super::room_features::Aabb;
 use crate::objects::{
-    FRoomLinePoint, UFloodFillLine, URoomFeature, URoomFeatureType, URoomGenerator,
+    FRandLinePoint, FRoomLinePoint, UFloodFillLine, UFloodFillPillar, URoomFeature,
+    URoomFeatureType, URoomGenerator,
 };
 
 /// Trait for checking feature visibility
@@ -147,6 +148,75 @@ fn flood_fill_line_sdf(line: &UFloodFillLine) -> impl Fn(&Point3<f64>) -> f64 + 
     }
 }
 
+/// SDF for a FloodFillPillar - creates a capsule/pill shape along a polyline
+/// Pillars fill material (opposite of carving), so this SDF is used for subtraction
+fn flood_fill_pillar_sdf(pillar: &UFloodFillPillar) -> impl Fn(&Point3<f64>) -> f64 + '_ {
+    move |p: &Point3<f64>| {
+        if pillar.points.is_empty() {
+            return f64::INFINITY;
+        }
+
+        // SDF for a capsule segment (sphere-swept line) with varying radius
+        let sd_capsule_segment = |p: &Point3<f64>, a: &FRandLinePoint, b: &FRandLinePoint| {
+            let a_point = Point3::new(
+                a.location.x as f64,
+                a.location.y as f64,
+                a.location.z as f64,
+            );
+            let b_point = Point3::new(
+                b.location.x as f64,
+                b.location.y as f64,
+                b.location.z as f64,
+            );
+            // Use average of min/max for deterministic radius
+            let a_radius = ((a.range.min + a.range.max) * 0.5) as f64;
+            let b_radius = ((b.range.min + b.range.max) * 0.5) as f64;
+
+            // Vector from a to b
+            let ab = Point3::new(
+                b_point.x - a_point.x,
+                b_point.y - a_point.y,
+                b_point.z - a_point.z,
+            );
+            // Vector from a to p
+            let ap = Point3::new(p.x - a_point.x, p.y - a_point.y, p.z - a_point.z);
+
+            let len_sq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+
+            if len_sq < 1e-10 {
+                // Points are coincident, just use sphere at a
+                return ap.coords.norm() - a_radius;
+            }
+
+            // Project point onto line segment, clamp to [0, 1]
+            let dot = ap.x * ab.x + ap.y * ab.y + ap.z * ab.z;
+            let t = (dot / len_sq).clamp(0.0, 1.0);
+
+            // Closest point on segment
+            let closest = Point3::new(
+                a_point.x + ab.x * t,
+                a_point.y + ab.y * t,
+                a_point.z + ab.z * t,
+            );
+
+            // Interpolated radius
+            let radius = a_radius * (1.0 - t) + b_radius * t;
+
+            // Distance to capsule surface
+            let diff = Point3::new(p.x - closest.x, p.y - closest.y, p.z - closest.z);
+            diff.coords.norm() - radius
+        };
+
+        let mut min = f64::INFINITY;
+
+        for pair in pillar.points.windows(2) {
+            min = min.min(sd_capsule_segment(p, &pair[0], &pair[1]));
+        }
+
+        min
+    }
+}
+
 /// Compute the bounding box needed for CSG generation from visible mesh features
 fn compute_csg_bounds<V: VisibilityCheck>(room: &URoomGenerator, visibility: &V) -> Option<Aabb> {
     let mut aabb = Aabb::new();
@@ -246,6 +316,41 @@ fn collect_flood_fill_lines<'a, V: VisibilityCheck>(
     lines
 }
 
+/// Collect all visible FloodFillPillar features from the room
+fn collect_flood_fill_pillars<'a, V: VisibilityCheck>(
+    features: &'a [URoomFeature],
+    visibility: &V,
+) -> Vec<&'a UFloodFillPillar> {
+    let mut pillars = Vec::new();
+
+    fn collect_recursive<'a, V: VisibilityCheck>(
+        features: &'a [URoomFeature],
+        pillars: &mut Vec<&'a UFloodFillPillar>,
+        visibility: &V,
+        path: &mut Vec<usize>,
+    ) {
+        path.push(0);
+        for (i, feature) in features.iter().enumerate() {
+            *path.last_mut().unwrap() = i;
+
+            // Skip invisible features
+            if !visibility.is_visible(path) {
+                continue;
+            }
+
+            if let URoomFeatureType::FloodFillPillar(pillar) = &feature.feature_type {
+                pillars.push(pillar);
+            }
+            collect_recursive(&feature.children, pillars, visibility, path);
+        }
+        path.pop();
+    }
+
+    let mut path = Vec::new();
+    collect_recursive(features, &mut pillars, visibility, &mut path);
+    pillars
+}
+
 /// Build CSG from all visible mesh features in the room
 pub fn build_csg_from_features<V: VisibilityCheck>(
     room: &URoomGenerator,
@@ -253,19 +358,37 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
 ) -> Option<CSG<()>> {
     let bounds = compute_csg_bounds(room, visibility)?;
     let lines = collect_flood_fill_lines(&room.room_features, visibility);
+    let pillars = collect_flood_fill_pillars(&room.room_features, visibility);
 
-    if lines.is_empty() {
+    if lines.is_empty() && pillars.is_empty() {
         return None;
     }
 
-    // Create combined SDF for all flood fill lines
+    // Create combined SDF:
+    // - Lines carve (create cave space): union (min) of all line SDFs
+    // - Pillars fill material: subtract from cave using max(cave_sdf, -pillar_sdf)
     let combined_sdf = move |p: &Point3<f64>| {
-        let mut min_dist = f64::INFINITY;
+        // Cave SDF from lines (min = union)
+        let mut cave_dist = f64::INFINITY;
         for line in &lines {
             let sdf = flood_fill_line_sdf(line);
-            min_dist = min_dist.min(sdf(p));
+            cave_dist = cave_dist.min(sdf(p));
         }
-        min_dist
+
+        // Pillar SDF (min = union of all pillars)
+        let mut pillar_dist = f64::INFINITY;
+        for pillar in &pillars {
+            let sdf = flood_fill_pillar_sdf(pillar);
+            pillar_dist = pillar_dist.min(sdf(p));
+        }
+
+        // Subtract pillars from cave: max(cave, -pillar)
+        // This removes pillar regions from the carved space
+        if pillar_dist < f64::INFINITY {
+            cave_dist.max(-pillar_dist)
+        } else {
+            cave_dist
+        }
     };
 
     // Calculate grid resolution based on bounds size
