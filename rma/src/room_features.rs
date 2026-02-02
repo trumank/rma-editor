@@ -1,14 +1,19 @@
+//! Room feature visualization and editing UI
+//!
+//! This module provides 3D visualization and egui editors for RMA room features.
+
 use three_d::{
-    egui, BoundingBox, CpuMaterial, CpuMesh, Gm, InstancedMesh, Instances, Mesh, Object,
-    PhysicalMaterial,
+    egui, vec2, vec3, Angle, BoundingBox, CpuMaterial, CpuMesh, Gm, InnerSpace, InstancedMesh,
+    Instances, Mat4, Mesh, Object, PhysicalMaterial, Quat, Radians, Srgba, Vector3,
 };
-use three_d_asset::{vec2, vec3, Angle, InnerSpace, Mat4, Quat, Radians, Srgba, Vector3};
 use transform_gizmo_egui::GizmoMode;
+
+use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
 
 use crate::{
     rma::{
-        DropPodCalldownLocationFeature, ECaveEntranceType, EntranceFeature, FTransform, FVector,
-        FloodFillBox, FloodFillLine, FloodFillPillar, SpawnActorFeature,
+        FTransform, FVector, RoomFeature, TypedProperties, UDropPodCalldownLocationFeature,
+        UEntranceFeature, UFloodFillBox, UFloodFillLine, UFloodFillPillar, USpawnActorFeature,
     },
     RMAContext,
 };
@@ -36,10 +41,6 @@ pub type Gizmos<'s> = Vec<(
     FTransform,
     Box<dyn FnOnce(FTransform) + 's>,
 )>;
-pub trait RoomFeatureTrait {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>>;
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool;
-}
 
 impl From<FVector> for Vector3<f32> {
     fn from(val: FVector) -> Self {
@@ -57,393 +58,332 @@ pub fn line_transform(p1: Vector3<f32>, p2: Vector3<f32>) -> Mat4 {
         * Mat4::from_nonuniform_scale((p1 - p2).magnitude(), 1.0, 1.0)
 }
 
-impl RoomFeatureTrait for FloodFillBox {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>> {
-        // only used in RMA_Escort10
-        let mut mesh = BoundingBox::new(ctx.context, CpuMesh::cube().compute_aabb());
-        mesh.set_transformation(
-            Mat4::from_translation(self.position.into())
-                * Mat4::from_nonuniform_scale(*self.extends.x, *self.extends.y, *self.extends.z),
-        );
+/// Build 3D visualization for a room feature
+pub fn build_feature(
+    pool: &ObjectPool,
+    handle: ObjectHandle,
+    feature: &RoomFeature,
+    ctx: &RMAContext,
+) -> Vec<Box<dyn Object>> {
+    let obj = pool.get(handle).expect("Invalid handle");
+    let props = obj.properties();
 
-        vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
-    }
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        false
-    }
-}
+    match feature {
+        RoomFeature::FloodFillBox(_) => {
+            let typed = UFloodFillBox::from_properties(props).unwrap();
+            let position = typed.position();
+            let extends = typed.extends();
 
-impl RoomFeatureTrait for FloodFillPillar {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>> {
-        let mut transformations = Vec::new();
-
-        let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
-
-        for pair in self.points.windows(2) {
-            add_line(pair[0].location.into(), pair[1].location.into());
-        }
-
-        vec![Box::new(Gm::new(
-            InstancedMesh::new(
-                ctx.context,
-                &Instances {
-                    transformations,
-                    ..Default::default()
-                },
-                &ctx.wireframe_mesh,
-            ),
-            ctx.wireframe_material.clone(),
-        ))]
-    }
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        ui.label("FloodFillPillar");
-
-        let mut changed = false;
-        list_editor(ui, &mut self.points, |ui, point| {
-            let mut changed = false;
-            ui.horizontal(|ui| {
-                vector3(ui, &mut point.location).c(&mut changed);
-            });
-            changed
-        })
-        .c(&mut changed);
-
-        for p in &mut self.points {
-            gizmos.push((
-                GizmoMode::all_translate().union(GizmoMode::all_scale()),
-                FTransform {
-                    translation: p.location,
-                    ..Default::default()
-                },
-                Box::new(|t| {
-                    p.location = t.translation;
-                }),
-            ));
-        }
-
-        changed
-    }
-}
-
-impl RoomFeatureTrait for SpawnActorFeature {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>> {
-        let mut obj = Gm::new(
-            Mesh::new(ctx.context, &CpuMesh::cone(16)),
-            PhysicalMaterial::new_opaque(
-                ctx.context,
-                &CpuMaterial {
-                    albedo: Srgba {
-                        r: 255,
-                        g: 200,
-                        b: 0,
-                        a: 200,
-                    },
-                    ..Default::default()
-                },
-            ),
-        );
-        obj.set_transformation(
-            Mat4::from_translation(self.location.into())
-                * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
-                * Mat4::from_angle_y(-Radians::turn_div_4()),
-        );
-        vec![Box::new(obj)]
-    }
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        let mut changed = false;
-
-        ui.label("SpawnActorFeature");
-
-        egui::Grid::new("grid")
-            .num_columns(2)
-            .spacing([40.0, 4.0])
-            .striped(true)
-            .show(ui, |ui| {
-                ui.label("location");
-                vector3(ui, &mut self.location).c(&mut changed);
-                ui.end_row();
-            });
-
-        gizmos.push((
-            GizmoMode::all_translate(),
-            FTransform {
-                translation: self.location,
-                ..Default::default()
-            },
-            Box::new(|t| {
-                self.location = t.translation;
-            }),
-        ));
-
-        changed
-    }
-}
-
-impl RoomFeatureTrait for FloodFillLine {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>> {
-        let mut transformations = Vec::new();
-
-        let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
-
-        for pair in self.points.windows(2) {
-            let (p1, p2) = (&pair[0], &pair[1]);
-            let v1: Vector3<f32> = p1.location.into();
-            let v2: Vector3<f32> = p2.location.into();
-            //add_line(v1, v2);
-
-            let d = v1.truncate() - v2.truncate();
-            let d = d / d.magnitude();
-            let d = vec2(-d.y, d.x);
-
-            let o1 = (*p1.h_range * d).extend(0.);
-            let o2 = (*p2.h_range * d).extend(0.);
-            add_line(v1 + o1, v2 + o2);
-            add_line(v1 - o1, v2 - o2);
-            add_line(
-                v1 + vec3(0., 0., *p1.v_range),
-                v2 + vec3(0., 0., *p2.v_range),
+            let mut mesh = BoundingBox::new(ctx.context, CpuMesh::cube().compute_aabb());
+            mesh.set_transformation(
+                Mat4::from_translation(position.into())
+                    * Mat4::from_nonuniform_scale(*extends.x, *extends.y, *extends.z),
             );
+            vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
         }
 
-        // horizontal perimeter circle
-        for point in &self.points {
-            let segments = 40;
-            let mut iter = (0..segments + 1)
-                .map(|i| {
-                    let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
-                    (angle.cos(), angle.sin())
-                })
-                .peekable();
-            while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
-                add_line(
-                    vec3(
-                        *point.location.x + *point.h_range * a.0,
-                        *point.location.y + *point.h_range * a.1,
-                        *point.location.z,
-                    ),
-                    vec3(
-                        *point.location.x + *point.h_range * b.0,
-                        *point.location.y + *point.h_range * b.1,
-                        *point.location.z,
-                    ),
-                );
+        RoomFeature::FloodFillPillar(_) => {
+            let typed = UFloodFillPillar::from_properties(props).unwrap();
+            let mut transformations = Vec::new();
+
+            let points: Vec<FVector> = typed.points().iter().map(|p| p.location()).collect();
+
+            for pair in points.windows(2) {
+                transformations.push(line_transform(pair[0].into(), pair[1].into()));
             }
-        }
 
-        // vertical half circles
-        for point in &self.points {
-            let segments = 40;
-            let mut iter = (0..segments / 2 + 1)
-                .map(|i| {
-                    let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
-                    (angle.cos(), angle.sin())
-                })
-                .peekable();
-            while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
-                add_line(
-                    vec3(
-                        *point.location.x + *point.h_range * a.0,
-                        *point.location.y,
-                        *point.location.z + *point.v_range * a.1,
-                    ),
-                    vec3(
-                        *point.location.x + *point.h_range * b.0,
-                        *point.location.y,
-                        *point.location.z + *point.v_range * b.1,
-                    ),
-                );
-                add_line(
-                    vec3(
-                        *point.location.x,
-                        *point.location.y + *point.h_range * a.0,
-                        *point.location.z + *point.v_range * a.1,
-                    ),
-                    vec3(
-                        *point.location.x,
-                        *point.location.y + *point.h_range * b.0,
-                        *point.location.z + *point.v_range * b.1,
-                    ),
-                );
-            }
-        }
-
-        vec![Box::new(Gm::new(
-            InstancedMesh::new(
-                ctx.context,
-                &Instances {
-                    transformations,
-                    ..Default::default()
-                },
-                &ctx.wireframe_mesh,
-            ),
-            ctx.wireframe_material.clone(),
-        ))]
-    }
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        let mut changed = false;
-
-        list_editor(ui, &mut self.points, |ui, point| {
-            let mut changed = false;
-            ui.horizontal(|ui| {
-                vector3(ui, &mut point.location).c(&mut changed);
-                ui.add(egui::DragValue::new(&mut *point.h_range).speed(1.))
-                    .c(&mut changed);
-            });
-            changed
-            /*
-            pub h_range: f32,
-            pub v_range: f32,
-            pub cieling_noise_range: f32,
-            pub wall_noise_range: f32,
-            pub floor_noise_range: f32,
-            pub cielingheight: f32,
-            pub height_scale: f32,
-            pub floor_depth: f32,
-            pub floor_angle: f32,
-            */
-        })
-        .c(&mut changed);
-
-        for p in &mut self.points {
-            gizmos.push((
-                GizmoMode::all_translate().union(GizmoMode::all_scale() - GizmoMode::ScaleY),
-                FTransform {
-                    translation: p.location,
-                    Scale3D: FVector {
-                        x: p.h_range,
-                        y: p.h_range,
-                        z: p.v_range,
+            vec![Box::new(Gm::new(
+                InstancedMesh::new(
+                    ctx.context,
+                    &Instances {
+                        transformations,
+                        ..Default::default()
                     },
-                    ..Default::default()
-                },
-                Box::new(|t| {
-                    p.location = t.translation;
-                    p.h_range = t.Scale3D.x;
-                    p.h_range = t.Scale3D.x;
-                    p.v_range = t.Scale3D.z;
-                }),
-            ));
+                    &ctx.wireframe_mesh,
+                ),
+                ctx.wireframe_material.clone(),
+            ))]
         }
 
-        changed
-    }
-}
+        RoomFeature::FloodFillLine(_) => {
+            let typed = UFloodFillLine::from_properties(props).unwrap();
+            let mut transformations = Vec::new();
 
-fn list_editor<T, F>(ui: &mut egui::Ui, items: &mut Vec<T>, mut show_item: F) -> bool
-where
-    T: Default + Clone,
-    F: FnMut(&mut egui::Ui, &mut T) -> bool,
-{
-    let mut changed = false;
+            let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
 
-    let mut rm = None;
-    let mut dup = None;
-    egui::Grid::new("grid")
-        .num_columns(2)
-        .spacing([40.0, 4.0])
-        .striped(true)
-        .show(ui, |ui| {
-            for (i, point) in items.iter_mut().enumerate() {
-                ui.horizontal(|ui| {
-                    if ui.button(" - ").clicked() {
-                        rm = Some(i);
-                    }
-                    if ui.button(" + ").clicked() {
-                        dup = Some(i);
-                    }
-                    ui.label(format!("{i}"));
-                });
-                show_item(ui, point).c(&mut changed);
-                ui.end_row();
+            // Collect points data
+            let points_data: Vec<_> = typed
+                .points()
+                .iter()
+                .map(|p| (p.location(), p.h_range(), p.v_range()))
+                .collect();
+
+            for pair in points_data.windows(2) {
+                let (loc1, h1, v1) = pair[0];
+                let (loc2, h2, v2) = pair[1];
+                let v1: Vector3<f32> = loc1.into();
+                let v2: Vector3<f32> = loc2.into();
+
+                let d = v1.truncate() - v2.truncate();
+                let d = d / d.magnitude();
+                let d = vec2(-d.y, d.x);
+
+                let o1 = (h1 * d).extend(0.);
+                let o2 = (h2 * d).extend(0.);
+                add_line(v1 + o1, v2 + o2);
+                add_line(v1 - o1, v2 - o2);
+                add_line(v1 + vec3(0., 0., v1.z), v2 + vec3(0., 0., v2.z));
             }
-        });
 
-    if let Some(rm) = rm {
-        items.remove(rm);
-        changed = true;
-    }
-    if let Some(dup) = dup {
-        items.insert(dup, items[dup].clone());
-        changed = true;
-    }
+            // horizontal perimeter circle
+            for (location, h_range, _v_range) in &points_data {
+                let segments = 40;
+                let mut iter = (0..segments + 1)
+                    .map(|i| {
+                        let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+                        (angle.cos(), angle.sin())
+                    })
+                    .peekable();
+                while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
+                    add_line(
+                        vec3(
+                            *location.x + h_range * a.0,
+                            *location.y + h_range * a.1,
+                            *location.z,
+                        ),
+                        vec3(
+                            *location.x + h_range * b.0,
+                            *location.y + h_range * b.1,
+                            *location.z,
+                        ),
+                    );
+                }
+            }
 
-    changed
-}
+            // vertical half circles
+            for (location, h_range, v_range) in &points_data {
+                let segments = 40;
+                let mut iter = (0..segments / 2 + 1)
+                    .map(|i| {
+                        let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+                        (angle.cos(), angle.sin())
+                    })
+                    .peekable();
+                while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
+                    add_line(
+                        vec3(
+                            *location.x + h_range * a.0,
+                            *location.y,
+                            *location.z + v_range * a.1,
+                        ),
+                        vec3(
+                            *location.x + h_range * b.0,
+                            *location.y,
+                            *location.z + v_range * b.1,
+                        ),
+                    );
+                    add_line(
+                        vec3(
+                            *location.x,
+                            *location.y + h_range * a.0,
+                            *location.z + v_range * a.1,
+                        ),
+                        vec3(
+                            *location.x,
+                            *location.y + h_range * b.0,
+                            *location.z + v_range * b.1,
+                        ),
+                    );
+                }
+            }
 
-impl RoomFeatureTrait for EntranceFeature {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>> {
-        let albedo = match self.entrance_type {
-            ECaveEntranceType::EntranceAndExit => Srgba {
-                r: 0,
-                g: 255,
-                b: 255,
-                a: 200,
-            },
-            ECaveEntranceType::Entrance => Srgba {
-                r: 255,
-                g: 100,
-                b: 0,
-                a: 200,
-            },
-            ECaveEntranceType::Exit => Srgba {
-                r: 255,
-                g: 0,
-                b: 100,
-                a: 200,
-            },
-            ECaveEntranceType::TreassureRoom => Srgba {
-                r: 255,
-                g: 200,
-                b: 0,
-                a: 200,
-            },
-        };
-        let mut sphere = Gm::new(
-            Mesh::new(ctx.context, &CpuMesh::sphere(16)),
-            PhysicalMaterial::new_opaque(
-                ctx.context,
-                &CpuMaterial {
-                    albedo,
-                    ..Default::default()
+            vec![Box::new(Gm::new(
+                InstancedMesh::new(
+                    ctx.context,
+                    &Instances {
+                        transformations,
+                        ..Default::default()
+                    },
+                    &ctx.wireframe_mesh,
+                ),
+                ctx.wireframe_material.clone(),
+            ))]
+        }
+
+        RoomFeature::EntranceFeature(_) => {
+            let typed = UEntranceFeature::from_properties(props).unwrap();
+            let location = typed.location();
+            let entrance_type = typed.entrance_type();
+
+            let albedo = match entrance_type {
+                "ECaveEntranceType::EntranceAndExit" => Srgba {
+                    r: 0,
+                    g: 255,
+                    b: 255,
+                    a: 200,
                 },
-            ),
-        );
-        // TODO there's also a direction component but I can't be bothered to figure out how it's
-        // mapped at this moment
-        sphere.set_transformation(
-            Mat4::from_translation(self.location.into()) * Mat4::from_scale(100.0),
-        );
-        vec![Box::new(sphere)]
-    }
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        let mut changed = false;
+                "ECaveEntranceType::Entrance" => Srgba {
+                    r: 255,
+                    g: 100,
+                    b: 0,
+                    a: 200,
+                },
+                "ECaveEntranceType::Exit" => Srgba {
+                    r: 255,
+                    g: 0,
+                    b: 100,
+                    a: 200,
+                },
+                "ECaveEntranceType::TreassureRoom" => Srgba {
+                    r: 255,
+                    g: 200,
+                    b: 0,
+                    a: 200,
+                },
+                _ => Srgba {
+                    r: 128,
+                    g: 128,
+                    b: 128,
+                    a: 200,
+                },
+            };
 
-        egui::Grid::new("grid")
-            .num_columns(2)
-            .spacing([40.0, 4.0])
-            .striped(true)
-            .show(ui, |ui| {
-                ui.label("location");
-                vector3(ui, &mut self.location).c(&mut changed);
-                ui.end_row();
-            });
+            let mut sphere = Gm::new(
+                Mesh::new(ctx.context, &CpuMesh::sphere(16)),
+                PhysicalMaterial::new_opaque(
+                    ctx.context,
+                    &CpuMaterial {
+                        albedo,
+                        ..Default::default()
+                    },
+                ),
+            );
+            sphere.set_transformation(
+                Mat4::from_translation(location.into()) * Mat4::from_scale(100.0),
+            );
+            vec![Box::new(sphere)]
+        }
 
-        gizmos.push((
-            GizmoMode::all_translate(),
-            FTransform {
-                translation: self.location,
-                ..Default::default()
-            },
-            Box::new(|t| {
-                self.location = t.translation;
-            }),
-        ));
+        RoomFeature::SpawnActorFeature(_) => {
+            let typed = USpawnActorFeature::from_properties(props).unwrap();
+            let location = typed.location();
 
-        changed
+            let mut obj = Gm::new(
+                Mesh::new(ctx.context, &CpuMesh::cone(16)),
+                PhysicalMaterial::new_opaque(
+                    ctx.context,
+                    &CpuMaterial {
+                        albedo: Srgba {
+                            r: 255,
+                            g: 200,
+                            b: 0,
+                            a: 200,
+                        },
+                        ..Default::default()
+                    },
+                ),
+            );
+            obj.set_transformation(
+                Mat4::from_translation(location.into())
+                    * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
+                    * Mat4::from_angle_y(-Radians::turn_div_4()),
+            );
+            vec![Box::new(obj)]
+        }
+
+        RoomFeature::DropPodCalldownLocationFeature(_) => {
+            let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
+            let location = typed.location();
+
+            let mut sphere = Gm::new(
+                Mesh::new(ctx.context, &CpuMesh::cylinder(16)),
+                PhysicalMaterial::new_opaque(
+                    ctx.context,
+                    &CpuMaterial {
+                        albedo: Srgba {
+                            r: 0,
+                            g: 255,
+                            b: 0,
+                            a: 200,
+                        },
+                        ..Default::default()
+                    },
+                ),
+            );
+            sphere.set_transformation(
+                Mat4::from_translation(location.into())
+                    * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
+                    * Mat4::from_angle_y(Radians::turn_div_4()),
+            );
+            vec![Box::new(sphere)]
+        }
+
+        _ => Vec::new(),
     }
 }
 
-fn vector3(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
+/// Build editor UI for a room feature
+pub fn edit_feature<'s>(
+    pool: &'s mut ObjectPool,
+    handle: ObjectHandle,
+    feature: &RoomFeature,
+    ui: &mut egui::Ui,
+    gizmos: &mut Gizmos<'s>,
+) -> bool {
+    // For now, just show the feature name
+    // Full editing support requires more work to handle mutable property access
+    ui.label(format!("Feature: {}", feature.name()));
+
+    let obj = pool.get(handle).expect("Invalid handle");
+    let props = obj.properties();
+
+    match feature {
+        RoomFeature::FloodFillBox(_) => {
+            let typed = UFloodFillBox::from_properties(props).unwrap();
+            ui.label(format!("Position: {:?}", typed.position()));
+            ui.label(format!("Extends: {:?}", typed.extends()));
+            false
+        }
+
+        RoomFeature::FloodFillPillar(_) => {
+            let typed = UFloodFillPillar::from_properties(props).unwrap();
+            ui.label(format!("Points: {}", typed.points().len()));
+            false
+        }
+
+        RoomFeature::FloodFillLine(_) => {
+            let typed = UFloodFillLine::from_properties(props).unwrap();
+            ui.label(format!("Points: {}", typed.points().len()));
+            false
+        }
+
+        RoomFeature::EntranceFeature(_) => {
+            let typed = UEntranceFeature::from_properties(props).unwrap();
+            ui.label(format!("Location: {:?}", typed.location()));
+            ui.label(format!("Type: {}", typed.entrance_type()));
+            false
+        }
+
+        RoomFeature::SpawnActorFeature(_) => {
+            let typed = USpawnActorFeature::from_properties(props).unwrap();
+            ui.label(format!("Location: {:?}", typed.location()));
+            false
+        }
+
+        RoomFeature::DropPodCalldownLocationFeature(_) => {
+            let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
+            ui.label(format!("Location: {:?}", typed.location()));
+            false
+        }
+
+        _ => {
+            ui.label("(no editor available)");
+            false
+        }
+    }
+}
+
+fn vector3_editor(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
         ui.add(egui::DragValue::new(&mut *vec.x).speed(1.))
@@ -454,46 +394,4 @@ fn vector3(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
             .c(&mut changed);
     });
     changed
-}
-
-impl RoomFeatureTrait for DropPodCalldownLocationFeature {
-    fn build(&self, ctx: &RMAContext) -> Vec<Box<dyn Object>> {
-        let mut sphere = Gm::new(
-            Mesh::new(ctx.context, &CpuMesh::cylinder(16)),
-            PhysicalMaterial::new_opaque(
-                ctx.context,
-                &CpuMaterial {
-                    albedo: Srgba {
-                        r: 0,
-                        g: 255,
-                        b: 0,
-                        a: 200,
-                    },
-                    ..Default::default()
-                },
-            ),
-        );
-        sphere.set_transformation(
-            Mat4::from_translation(self.location.into())
-                * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
-                * Mat4::from_angle_y(Radians::turn_div_4()),
-        );
-        vec![Box::new(sphere)]
-    }
-    fn editor<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        ui.label("DropPodCalldownLocationFeature");
-
-        gizmos.push((
-            GizmoMode::all_translate(),
-            FTransform {
-                translation: self.location,
-                ..Default::default()
-            },
-            Box::new(|t| {
-                self.location = t.translation;
-            }),
-        ));
-
-        false
-    }
 }

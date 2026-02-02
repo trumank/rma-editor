@@ -1,23 +1,17 @@
 #![allow(special_module_name)]
 pub mod rma;
 pub mod room_features;
+pub mod typed_properties;
 
 #[cfg(target_arch = "wasm32")]
 mod main;
 
-use std::{
-    fs,
-    io::{Cursor, Read, Seek},
-    path::Path,
-};
+use std::path::Path;
 
 use anyhow::Result;
-use rma::RoomGenerator;
-use rma_lib::FromExport;
+use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
+use asset_ser::loader::asset_loader;
 use three_d::{Context, CpuMesh, PhysicalMaterial};
-use unreal_asset::{
-    engine_version::EngineVersion, exports::ExportBaseTrait, types::PackageIndex, Asset,
-};
 
 pub struct RMAContext<'c> {
     pub context: &'c Context,
@@ -30,30 +24,10 @@ pub enum AppMode {
     Editor { path: String },
 }
 
-pub fn read_asset<P: AsRef<Path>>(
-    path: P,
-    version: EngineVersion,
-) -> Result<Asset<Cursor<Vec<u8>>>> {
-    let uasset = Cursor::new(fs::read(&path)?);
-    let uexp = Cursor::new(fs::read(path.as_ref().with_extension("uexp"))?);
-    let asset = Asset::new(uasset, Some(uexp), version, None, false)?;
-
-    Ok(asset)
-}
-
-pub fn read_rma<C: Read + Seek>(asset: &Asset<C>) -> Result<RoomGenerator> {
-    let root = asset
-        .asset_data
-        .exports
-        .iter()
-        .enumerate()
-        .find_map(|(i, export)| {
-            (export.get_base_export().outer_index.index == 0)
-                .then(|| PackageIndex::from_export(i as i32).unwrap())
-        })
-        .unwrap();
-
-    RoomGenerator::from_export(asset, root)
+/// Load an RMA asset using asset_ser
+pub fn load_rma_asset(path: &Path, pool: &mut ObjectPool) -> Result<ObjectHandle> {
+    let handle = asset_loader::load_asset(path, pool)?;
+    Ok(handle)
 }
 
 // Entry point for wasm
@@ -76,13 +50,9 @@ pub async fn start() -> Result<(), JsValue> {
 
 #[cfg(target_arch = "wasm32")]
 pub async fn wasm_main() -> Result<()> {
-    use rma_lib::list_dir;
-
+    // TODO: Update for asset_ser - wasm loading needs different approach
     let mode = AppMode::Gallery {
-        paths: list_dir!("assets/rma")
-            .into_iter()
-            .filter_map(|p| p.strip_suffix(".uasset").map(|p| p.to_string()))
-            .collect(),
+        paths: vec![], // TODO: restore list_dir macro or use different loading
     };
 
     main::run(mode)?;

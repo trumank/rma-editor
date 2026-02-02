@@ -4,10 +4,11 @@ use crate as rma;
 use anyhow::Result;
 use futures::task::LocalSpawnExt;
 use log::info;
-use rma::read_rma;
 use rma::rma::FQuat;
 use rma::rma::FTransform;
 use rma::rma::FVector;
+use rma::rma::RoomFeature;
+use rma::room_features::build_feature;
 use rma::room_features::Gizmos;
 use rma::AppMode;
 use three_d::*;
@@ -15,17 +16,14 @@ use transform_gizmo_egui::Gizmo;
 use transform_gizmo_egui::GizmoConfig;
 use transform_gizmo_egui::GizmoOrientation;
 use transform_gizmo_egui::GizmoResult;
-use unreal_asset::engine_version::EngineVersion;
-use unreal_asset::Asset;
+
+use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
 
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::ops::Deref;
+use std::path::Path;
 use std::sync::mpsc;
 
-use rma::rma::RoomFeature;
-use rma::rma::RoomGenerator;
-use rma::room_features::RoomFeatureTrait;
 use rma::RMAContext;
 
 // Entry point for non-wasm
@@ -38,82 +36,40 @@ fn main() -> Result<()> {
     run(AppMode::Editor { path })
 }
 
-fn iter_features<F, T>(features: &[RoomFeature], path: &mut Vec<usize>, f: &mut F)
-where
+fn iter_features<F, T>(
+    pool: &ObjectPool,
+    features: &[RoomFeature],
+    path: &mut Vec<usize>,
+    f: &mut F,
+) where
     F: FnMut(&RoomFeature, &[usize]) -> T,
 {
     path.push(0);
     for (i, feat) in features.iter().enumerate() {
         *path.last_mut().unwrap() = i;
         f(feat, path);
-        iter_features(&feat.base().room_features, path, f);
+        let children = feat.get_child_features(pool);
+        iter_features(pool, &children, path, f);
     }
     path.pop();
 }
 
 fn build_primitives(
     ctx: &RMAContext,
-    rma: &RoomGenerator,
+    pool: &ObjectPool,
+    root_handle: ObjectHandle,
 ) -> HashMap<Vec<usize>, Vec<Box<dyn Object>>> {
     let mut primitives = HashMap::new();
+    let features = rma::rma::load_room_features(pool, root_handle);
     let mut path = vec![];
-    iter_features(&rma.room_features, &mut path, &mut |f, path| match f {
-        RoomFeature::FloodFillBox(f) => {
-            primitives.insert(path.to_vec(), RoomFeatureTrait::build(f, ctx));
+
+    iter_features(pool, &features, &mut path, &mut |f, path| {
+        let objs = build_feature(pool, f.handle(), f, ctx);
+        if !objs.is_empty() {
+            primitives.insert(path.to_vec(), objs);
         }
-        RoomFeature::FloodFillPillar(f) => {
-            primitives.insert(path.to_vec(), RoomFeatureTrait::build(f, ctx));
-        }
-        RoomFeature::SpawnActorFeature(f) => {
-            primitives.insert(path.to_vec(), RoomFeatureTrait::build(f, ctx));
-        }
-        RoomFeature::FloodFillLine(f) => {
-            primitives.insert(path.to_vec(), RoomFeatureTrait::build(f, ctx));
-        }
-        RoomFeature::EntranceFeature(f) => {
-            primitives.insert(path.to_vec(), RoomFeatureTrait::build(f, ctx));
-        }
-        RoomFeature::DropPodCalldownLocationFeature(f) => {
-            primitives.insert(path.to_vec(), RoomFeatureTrait::build(f, ctx));
-        }
-        _ => {}
     });
     primitives
-}
-
-trait RoomFeatureExt {
-    fn ui<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool;
-    fn room_features_mut(&mut self) -> &mut Vec<RoomFeature>;
-}
-
-impl RoomFeatureExt for RoomFeature {
-    fn ui<'s>(&'s mut self, ui: &mut egui::Ui, gizmos: &mut Gizmos<'s>) -> bool {
-        match self {
-            RoomFeature::FloodFillBox(f) => f.editor(ui, gizmos),
-            RoomFeature::FloodFillPillar(f) => f.editor(ui, gizmos),
-            RoomFeature::SpawnActorFeature(f) => f.editor(ui, gizmos),
-            RoomFeature::FloodFillLine(f) => f.editor(ui, gizmos),
-            RoomFeature::EntranceFeature(f) => f.editor(ui, gizmos),
-            RoomFeature::DropPodCalldownLocationFeature(f) => f.editor(ui, gizmos),
-            _ => todo!(),
-        }
-    }
-    fn room_features_mut(&mut self) -> &mut Vec<RoomFeature> {
-        match self {
-            RoomFeature::FloodFillBox(f) => &mut f.base.room_features,
-            RoomFeature::FloodFillPillar(f) => &mut f.base.room_features,
-            RoomFeature::SpawnActorFeature(f) => &mut f.base.room_features,
-            RoomFeature::FloodFillLine(f) => &mut f.base.room_features,
-            RoomFeature::EntranceFeature(f) => &mut f.base.room_features,
-            RoomFeature::DropPodCalldownLocationFeature(f) => &mut f.base.room_features,
-            RoomFeature::FloodFillProceduralPillar => todo!(),
-            RoomFeature::SpawnTriggerFeature(f) => &mut f.base.room_features,
-            RoomFeature::RandomSelector(f) => &mut f.base.room_features,
-            RoomFeature::RandomSubRoomFeature => todo!(),
-            RoomFeature::ResourceFeature(f) => &mut f.base.room_features,
-            RoomFeature::SubRoomFeature => todo!(),
-        }
-    }
 }
 
 struct State {
@@ -125,14 +81,12 @@ impl Default for State {
     }
 }
 
-type Rma = Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>;
 struct App {
     panel_width: f32,
-    //rma: Option<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
     mode: AppMode,
     selected_room: Option<String>,
     selected_feature: Vec<usize>,
-    tx: std::sync::mpsc::Sender<(RoomGenerator, Asset<Cursor<Vec<u8>>>)>,
+    tx: std::sync::mpsc::Sender<(ObjectPool, ObjectHandle)>,
     spawner: futures::executor::LocalSpawner,
     task_handles: Vec<Result<(), futures::task::SpawnError>>,
     states: HashMap<Vec<usize>, State>,
@@ -145,14 +99,13 @@ struct App {
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
-    let mut rma = match &mode {
+    let (mut pool, root_handle) = match &mode {
         AppMode::Editor { path } => {
-            use rma::read_asset;
-
-            let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
-            Some((read_rma(&asset)?, asset))
+            let mut pool = ObjectPool::new();
+            let handle = rma::load_rma_asset(Path::new(path), &mut pool)?;
+            (Some(pool), Some(handle))
         }
-        AppMode::Gallery { paths: _ } => None,
+        AppMode::Gallery { paths: _ } => (None, None),
     };
 
     let mut ex = futures::executor::LocalPool::new();
@@ -173,8 +126,7 @@ pub fn run(mode: AppMode) -> Result<()> {
         0.1,
         100000.0,
     );
-    let mut control = OrbitControl::new(*camera.target(), 1.0, 100000.0);
-    camera.mirror_in_xz_plane();
+    let mut control = OrbitControl::new(camera.target().clone(), 1.0, 100000.0);
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -191,7 +143,7 @@ pub fn run(mode: AppMode) -> Result<()> {
     wireframe_material.render_states.cull = Cull::Back;
     let mut wireframe_mesh = CpuMesh::cylinder(10);
     wireframe_mesh
-        .transform(&Mat4::from_nonuniform_scale(1.0, 10.0, 10.0))
+        .transform(Mat4::from_nonuniform_scale(1.0, 10.0, 10.0))
         .unwrap();
 
     let rma_ctx = RMAContext {
@@ -202,16 +154,20 @@ pub fn run(mode: AppMode) -> Result<()> {
 
     let axes = Axes::new(&context, 10., 200.0);
 
-    let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
-    let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
+    let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, vec3(0.0, -0.5, -0.5));
+    let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, vec3(0.0, 0.5, 0.5));
 
     let mut gui = three_d::GUI::new(&context);
     let (tx, rx) = mpsc::channel();
 
+    let primitives = match (&pool, root_handle) {
+        (Some(p), Some(h)) => Some(build_primitives(&rma_ctx, p, h)),
+        _ => None,
+    };
+
     let mut app = App {
         panel_width: 400.0,
-        primitives: rma.as_ref().map(|rma| build_primitives(&rma_ctx, &rma.0)),
-        //rma,
+        primitives,
         mode,
         selected_room: None,
         selected_feature: vec![],
@@ -229,17 +185,18 @@ pub fn run(mode: AppMode) -> Result<()> {
     window.render_loop(move |mut frame_input| {
         ex.run_until_stalled();
 
-        if let Ok(new_rma) = rx.try_recv() {
-            rma = Some(new_rma);
+        if let Ok((new_pool, new_handle)) = rx.try_recv() {
+            pool = Some(new_pool);
             app.states.clear();
-            app.primitives = rma.as_ref().map(|rma| {
+            app.primitives = pool.as_ref().map(|p| {
                 build_primitives(
                     &RMAContext {
                         context: &app.context,
                         wireframe_material: app.wireframe_material.clone(),
                         wireframe_mesh: app.wireframe_mesh.clone(),
                     },
-                    &rma.0,
+                    p,
+                    new_handle,
                 )
             });
         }
@@ -267,7 +224,14 @@ pub fn run(mode: AppMode) -> Result<()> {
                 {
                     let mut gizmos = vec![];
 
-                    draw_panel(gui_context, &mut app, &mut rma, &mut changed, &mut gizmos);
+                    draw_panel(
+                        gui_context,
+                        &mut app,
+                        &mut pool,
+                        root_handle,
+                        &mut changed,
+                        &mut gizmos,
+                    );
 
                     let viewport = egui::Rect::from_min_max(
                         (app.panel_width, 0.).into(),
@@ -287,15 +251,19 @@ pub fn run(mode: AppMode) -> Result<()> {
                 }
 
                 if changed {
-                    //states.clear();
-                    app.primitives = Some(build_primitives(
-                        &RMAContext {
-                            context: &app.context,
-                            wireframe_material: app.wireframe_material.clone(),
-                            wireframe_mesh: app.wireframe_mesh.clone(),
-                        },
-                        &rma.as_ref().unwrap().0,
-                    ));
+                    app.primitives = pool.as_ref().and_then(|p| {
+                        root_handle.map(|h| {
+                            build_primitives(
+                                &RMAContext {
+                                    context: &app.context,
+                                    wireframe_material: app.wireframe_material.clone(),
+                                    wireframe_mesh: app.wireframe_mesh.clone(),
+                                },
+                                p,
+                                h,
+                            )
+                        })
+                    });
                 }
             },
         );
@@ -353,7 +321,8 @@ pub fn run(mode: AppMode) -> Result<()> {
 fn draw_panel<'g>(
     ctx: &egui::Context,
     app: &mut App,
-    rma: &'g mut Rma,
+    pool: &'g mut Option<ObjectPool>,
+    root_handle: Option<ObjectHandle>,
     changed: &mut bool,
     gizmos: &mut Gizmos<'g>,
 ) {
@@ -364,13 +333,17 @@ fn draw_panel<'g>(
         .max_width(app.panel_width)
         .show(ctx, |ui| {
             ui.heading("Debug Panel");
-            if let Some(rma) = rma.as_mut() {
+
+            if pool.is_some() && root_handle.is_some() {
                 if ui.button("save").clicked() {
-                    save(&mut rma.1, &rma.0).unwrap();
+                    // TODO: Implement save using asset_ser::saver::save_asset
+                    ui.label("Save not yet implemented with asset_ser");
                 }
             }
+
             fn features(
                 ui: &mut Ui,
+                pool: &ObjectPool,
                 path: &mut Vec<usize>,
                 f: &[RoomFeature],
                 states: &mut HashMap<Vec<usize>, State>,
@@ -390,17 +363,17 @@ fn draw_panel<'g>(
                     .show_header(ui, |ui| {
                         ui.checkbox(&mut states.entry(path.clone()).or_default().visible, "");
                         let mut checked = path == selected_feature;
-                        //println!("{path:?} {selected_feature:?}");
                         if ui.toggle_value(&mut checked, f.name()).changed() && checked {
-                            println!("{path:?} asdf");
                             deferred_select.clone_from(path);
                         }
                     })
                     .body(|ui| {
+                        let children = f.get_child_features(pool);
                         features(
                             ui,
+                            pool,
                             path,
-                            &f.base().room_features,
+                            &children,
                             states,
                             selected_feature,
                             deferred_select,
@@ -440,43 +413,7 @@ fn draw_panel<'g>(
                                                 app.selected_room = Some(room.to_string());
                                                 info!("{:?}", app.selected_room);
 
-                                                let name = room.to_string();
-                                                let tx = app.tx.clone();
-                                                let task = app.spawner.spawn_local(async move {
-                                                    let uasset =
-                                                        three_d_asset::io::load_async(&[format!(
-                                                            "rma/{name}.uasset"
-                                                        )])
-                                                        .await
-                                                        .unwrap();
-                                                    let uexp =
-                                                        three_d_asset::io::load_async(&[format!(
-                                                            "rma/{name}.uexp"
-                                                        )])
-                                                        .await
-                                                        .unwrap();
-
-                                                    let version = EngineVersion::VER_UE4_27;
-                                                    let uasset = Cursor::new(
-                                                        uasset.get("").unwrap().to_vec(),
-                                                    );
-                                                    let uexp =
-                                                        Cursor::new(uexp.get("").unwrap().to_vec());
-                                                    let asset = Asset::new(
-                                                        uasset,
-                                                        Some(uexp),
-                                                        version,
-                                                        None,
-                                                        false,
-                                                    )
-                                                    .unwrap();
-
-                                                    let rma = read_rma(&asset).unwrap();
-
-                                                    info!("{rma:?}");
-                                                    tx.send((rma, asset)).unwrap();
-                                                });
-                                                app.task_handles.push(task);
+                                                // TODO: Load room with asset_ser
                                             }
                                         }
                                         ui.allocate_space(ui.available_size());
@@ -492,12 +429,14 @@ fn draw_panel<'g>(
                         ui.group(|ui| {
                             ui.heading("Room Features");
                             egui::ScrollArea::vertical().show(ui, |ui| {
-                                if let Some(rma) = rma.as_ref() {
+                                if let (Some(p), Some(h)) = (pool.as_ref(), root_handle) {
+                                    let room_features = rma::rma::load_room_features(p, h);
                                     let mut path = vec![];
                                     features(
                                         ui,
+                                        p,
                                         &mut path,
-                                        &rma.0.room_features,
+                                        &room_features,
                                         &mut app.states,
                                         &mut app.selected_feature,
                                         &mut deferred_select,
@@ -508,6 +447,8 @@ fn draw_panel<'g>(
                         });
                     });
                 });
+
+                // Edit feature panel
                 let mut path_iter = app.selected_feature.iter();
                 if let Some(first) = path_iter.next() {
                     strip.cell(|ui| {
@@ -515,13 +456,26 @@ fn draw_panel<'g>(
                             ui.group(|ui| {
                                 ui.heading("Edit Feature");
                                 egui::ScrollArea::vertical().show(ui, |ui| {
-                                    let Some(rma) = rma.as_mut() else { return };
-                                    let mut feature = &mut rma.0.room_features[*first];
-                                    for feature_index in path_iter {
-                                        feature = &mut feature.room_features_mut()[*feature_index];
+                                    if let (Some(p), Some(h)) = (pool.as_mut(), root_handle) {
+                                        let room_features = rma::rma::load_room_features(p, h);
+                                        if let Some(feature) = room_features.get(*first) {
+                                            // Navigate to the selected feature
+                                            let mut current = feature.clone();
+                                            for &idx in path_iter {
+                                                let children = current.get_child_features(p);
+                                                if let Some(child) = children.get(idx) {
+                                                    current = child.clone();
+                                                }
+                                            }
+                                            *changed |= rma::room_features::edit_feature(
+                                                p,
+                                                current.handle(),
+                                                &current,
+                                                ui,
+                                                gizmos,
+                                            );
+                                        }
                                     }
-                                    *changed |= feature.ui(ui, gizmos);
-
                                     ui.allocate_space(ui.available_size());
                                 });
                             });
@@ -575,8 +529,8 @@ fn draw_gizmo(
                     let snapping = ui.input(|input| input.modifiers.ctrl);
 
                     gizmo.update_config(GizmoConfig {
-                        view_matrix: convert_mat4_to_mint(app.camera.view()),
-                        projection_matrix: convert_mat4_to_mint(app.camera.projection()),
+                        view_matrix: convert_mat4_to_mint(&app.camera.view()),
+                        projection_matrix: convert_mat4_to_mint(&app.camera.projection()),
                         viewport,
                         modes,
                         orientation: GizmoOrientation::Local,
@@ -636,9 +590,15 @@ fn draw_gizmo(
                                 z: (transform.scale.z as f32).into(),
                             },
                         };
-                        println!("Gizmo transform: translation=({}, {}, {}), scale=({}, {}, {})",
-                            new_transform.translation.x, new_transform.translation.y, new_transform.translation.z,
-                            new_transform.Scale3D.x, new_transform.Scale3D.y, new_transform.Scale3D.z);
+                        println!(
+                            "Gizmo transform: translation=({}, {}, {}), scale=({}, {}, {})",
+                            new_transform.translation.x,
+                            new_transform.translation.y,
+                            new_transform.translation.z,
+                            new_transform.Scale3D.x,
+                            new_transform.Scale3D.y,
+                            new_transform.Scale3D.z
+                        );
                         cb(new_transform);
                     }
                 }
@@ -695,6 +655,7 @@ impl GizmoExt2 for Gizmo {
                 dragging: ui.input(|input| {
                     enable && input.pointer.button_down(egui::PointerButton::Primary)
                 }),
+                hovered: false, // TODO
             },
             targets,
         );
@@ -722,49 +683,13 @@ impl GizmoExt2 for Gizmo {
     }
 }
 
-fn save<C: std::io::Read + std::io::Seek>(asset: &mut Asset<C>, rma: &RoomGenerator) -> Result<()> {
-    use rma_lib::{CtxSer, NameCounter, ToExport as _};
-    use unreal_asset::{exports::ExportBaseTrait, types::PackageIndex};
-
-    asset.asset_data.exports.clear();
-    asset.imports.clear();
-
-    let mut name_counter = NameCounter::default();
-    let pi = dbg!(rma.to_export(&mut CtxSer::new(asset, &mut name_counter))?);
-
-    let name = asset.add_fname("RMA_CarverA");
-    asset
-        .asset_data
-        .exports
-        .last_mut()
-        .unwrap()
-        .get_base_export_mut()
-        .object_name = name;
-
-    for (i, export) in asset.asset_data.exports.iter_mut().enumerate() {
-        let i = PackageIndex::from_export(i as i32).unwrap();
-        if i != pi {
-            let base = export.get_base_export_mut();
-            base.outer_index = pi;
-            base.create_before_create_dependencies.push(pi);
-        }
-    }
-
-    let new_path =
-        std::path::Path::new("test-pak/FSD/Content/Maps/Rooms/RoomGenerators/RMA_CarverA.uasset");
-    asset.write_data(
-        &mut std::fs::File::create(new_path)?,
-        Some(&mut std::fs::File::create(new_path.with_extension("uexp"))?),
-    )?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod test {
     use std::ffi::OsStr;
 
     use anyhow::Context;
-    use rma::read_asset;
+    use asset_ser::core::object_pool::ObjectPool;
+    use asset_ser::loader::asset_loader;
 
     use super::*;
 
@@ -774,137 +699,13 @@ mod test {
             let path = path?.path();
             if path.extension() == Some(OsStr::new("uasset")) {
                 println!("{:?}", path.display());
-                let asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
-                let _rma = read_rma(&asset)
-                    .with_context(|| format!("parsing asset {:?}", path.display()))?;
-                println!("{_rma:?}");
+                let mut pool = ObjectPool::new();
+                let _handle = asset_loader::load_asset(&path, &mut pool)
+                    .with_context(|| format!("loading asset {:?}", path.display()))?;
+                println!("Loaded {} objects", pool.len());
             }
         }
 
         Ok(())
-    }
-
-    #[test]
-    fn test_save_all() -> Result<()> {
-        for path in std::fs::read_dir("../assets/rma")? {
-            let path = path?.path();
-            if path.extension() == Some(OsStr::new("uasset")) {
-                println!("{:?}", path.display());
-                let mut asset = read_asset(&path, EngineVersion::VER_UE4_27)?;
-                let rma = read_rma(&asset)
-                    .with_context(|| format!("parsing asset {:?}", path.display()))?;
-                println!("{rma:?}");
-
-                use rma_lib::{CtxSer, NameCounter, ToExport as _};
-                use unreal_asset::{exports::ExportBaseTrait, types::PackageIndex};
-
-                asset.asset_data.exports.clear();
-                asset.imports.clear();
-
-                let mut name_counter = NameCounter::default();
-                let pi = dbg!(rma.to_export(&mut CtxSer::new(&mut asset, &mut name_counter))?);
-
-                let name = asset.add_fname("RMA_CarverA");
-                asset
-                    .asset_data
-                    .exports
-                    .last_mut()
-                    .unwrap()
-                    .get_base_export_mut()
-                    .object_name = name;
-
-                for (i, export) in asset.asset_data.exports.iter_mut().enumerate() {
-                    let i = PackageIndex::from_export(i as i32).unwrap();
-                    if i != pi {
-                        let base = export.get_base_export_mut();
-                        base.outer_index = pi;
-                        base.create_before_create_dependencies.push(pi);
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_read_small() -> Result<()> {
-        use std::fmt::Write;
-
-        let path = std::path::Path::new("../assets/rma/RMA_NewTutorial02B_Combat.uasset");
-        let mut asset_orig = read_asset(path, EngineVersion::VER_UE4_27)?;
-        let asset = read_asset(path, EngineVersion::VER_UE4_27)?;
-
-        let mut buf = String::new();
-        writeln!(&mut buf, "{asset:#?}").unwrap();
-        std::fs::write("../dbg_orig.txt", buf)?;
-
-        dbg!(&asset.asset_data.exports);
-
-        let _rma = read_rma(&asset)?;
-        println!("{_rma:#?}");
-
-        asset_stuff::asdf(&mut asset_orig, &_rma)?;
-
-        let new_path = std::path::Path::new("../RMA_CarverA.uasset");
-        dbg!(&asset_orig);
-
-        let mut buf = String::new();
-        writeln!(&mut buf, "{asset_orig:#?}").unwrap();
-        std::fs::write("../dbg_new.txt", buf)?;
-
-        asset_orig.write_data(
-            &mut std::fs::File::create(new_path)?,
-            Some(&mut std::fs::File::create(new_path.with_extension("uexp"))?),
-        )?;
-
-        //let rma_round_trip = read_rma(asset_orig)?;
-        //assert_eq!(_rma, rma_round_trip);
-
-        Ok(())
-    }
-
-    mod asset_stuff {
-        use anyhow::Result;
-        use rma::rma::RoomGenerator;
-        use rma_lib::{NameCounter, ToExport as _};
-        use std::io::{Read, Seek};
-
-        use unreal_asset::{exports::ExportBaseTrait, types::PackageIndex, Asset};
-
-        pub fn asdf<C: Read + Seek>(other: &mut Asset<C>, data: &RoomGenerator) -> Result<()> {
-            other.asset_data.exports.clear();
-            //other.imports.clear();
-
-            let mut name_counter = NameCounter::default();
-            let pi = dbg!(data.to_export(&mut rma_lib::CtxSer::new(other, &mut name_counter))?);
-
-            let name = other.add_fname("RMA_CarverA");
-            other
-                .asset_data
-                .exports
-                .last_mut()
-                .unwrap()
-                .get_base_export_mut()
-                .object_name = name;
-
-            for (i, export) in other.asset_data.exports.iter_mut().enumerate() {
-                let i = PackageIndex::from_export(i as i32).unwrap();
-                if i != pi {
-                    let base = export.get_base_export_mut();
-                    base.outer_index = pi;
-                    base.create_before_create_dependencies.push(pi);
-                }
-            }
-
-            //other.asset_data.exports.pop();
-
-            //*other.asset_data.exports.last_mut().unwrap() = export;
-            //let last = other.asset_data.exports.last().unwrap();
-            //pretty_assertions::assert_eq!(*last, export);
-
-            //dbg!(&other.asset_data.exports.last().unwrap());
-            Ok(())
-        }
     }
 }
