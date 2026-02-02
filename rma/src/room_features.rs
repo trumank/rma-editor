@@ -20,6 +20,12 @@ use crate::{
     RMAContext,
 };
 
+// Wireframe visualization constants
+const CIRCLE_SEGMENTS: usize = 40;
+const ELLIPSOID_H_BANDS: usize = 2;
+const ELLIPSOID_V_BANDS: usize = 2;
+const CONNECTOR_BANDS: usize = 2;
+
 trait ChangedTrait {
     fn c(&self, changed: &mut bool);
 }
@@ -114,81 +120,106 @@ pub fn build_feature(
                 .map(|p| (p.location(), p.h_range(), p.v_range()))
                 .collect();
 
+            // Connector bands between points at each height level
             for pair in points_data.windows(2) {
-                let (loc1, h1, _v1) = pair[0];
-                let (loc2, h2, _v2) = pair[1];
+                let (loc1, h1, v1) = pair[0];
+                let (loc2, h2, v2) = pair[1];
                 let p1: Vector3<f32> = loc1.into();
                 let p2: Vector3<f32> = loc2.into();
 
                 let d = (p1.truncate() - p2.truncate()).normalize();
-                let d = vec2(-d.y, d.x);
+                let perp = vec2(-d.y, d.x);
 
-                let o1 = (h1 * d).extend(0.);
-                let o2 = (h2 * d).extend(0.);
-                add_line(p1 + o1, p2 + o2);
-                add_line(p1 - o1, p2 - o2);
-                add_line(p1 + vec3(0., 0., p1.z), p2 + vec3(0., 0., p2.z));
+                for band in 0..CONNECTOR_BANDS {
+                    let t = band as f32 / (CONNECTOR_BANDS - 1) as f32;
+                    let z1 = t * v1;
+                    let z2 = t * v2;
+                    // Horizontal radius shrinks following ellipsoid profile
+                    let h_scale = (1.0 - t * t).sqrt();
+                    let h1_scaled = h1 * h_scale;
+                    let h2_scaled = h2 * h_scale;
+
+                    // Left side connector
+                    add_line(
+                        p1 + vec3(perp.x * h1_scaled, perp.y * h1_scaled, z1),
+                        p2 + vec3(perp.x * h2_scaled, perp.y * h2_scaled, z2),
+                    );
+                    // Right side connector
+                    add_line(
+                        p1 + vec3(-perp.x * h1_scaled, -perp.y * h1_scaled, z1),
+                        p2 + vec3(-perp.x * h2_scaled, -perp.y * h2_scaled, z2),
+                    );
+                }
+                // Connect the tops of the semi-ellipsoids
+                add_line(p1 + vec3(0., 0., v1), p2 + vec3(0., 0., v2));
             }
 
-            // horizontal perimeter circle
-            for (location, h_range, _v_range) in &points_data {
-                let segments = 40;
-                let mut iter = (0..segments + 1)
-                    .map(|i| {
-                        let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
-                        (angle.cos(), angle.sin())
-                    })
-                    .peekable();
-                while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
-                    add_line(
-                        vec3(
-                            *location.x + h_range * a.0,
-                            *location.y + h_range * a.1,
-                            *location.z,
-                        ),
-                        vec3(
-                            *location.x + h_range * b.0,
-                            *location.y + h_range * b.1,
-                            *location.z,
-                        ),
-                    );
+            // horizontal bands at different heights (semi-ellipsoid, top half only)
+            for (location, h_range, v_range) in &points_data {
+                let segments = CIRCLE_SEGMENTS;
+                for band in 0..ELLIPSOID_H_BANDS {
+                    // z offset from 0 to +v_range (top half only)
+                    let t = band as f32 / (ELLIPSOID_H_BANDS - 1) as f32;
+                    let z_off = t * v_range;
+                    // horizontal radius shrinks as we move up (ellipsoid profile)
+                    let h_scale = (1.0 - t * t).sqrt();
+                    let h_r = h_range * h_scale;
+
+                    if h_r < 1.0 {
+                        continue;
+                    }
+
+                    let mut iter = (0..segments + 1)
+                        .map(|i| {
+                            let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+                            (angle.cos(), angle.sin())
+                        })
+                        .peekable();
+                    while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
+                        add_line(
+                            vec3(
+                                *location.x + h_r * a.0,
+                                *location.y + h_r * a.1,
+                                *location.z + z_off,
+                            ),
+                            vec3(
+                                *location.x + h_r * b.0,
+                                *location.y + h_r * b.1,
+                                *location.z + z_off,
+                            ),
+                        );
+                    }
                 }
             }
 
-            // vertical half circles
+            // vertical bands at multiple rotation angles
             for (location, h_range, v_range) in &points_data {
-                let segments = 40;
-                let mut iter = (0..segments / 2 + 1)
-                    .map(|i| {
-                        let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
-                        (angle.cos(), angle.sin())
-                    })
-                    .peekable();
-                while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
-                    add_line(
-                        vec3(
-                            *location.x + h_range * a.0,
-                            *location.y,
-                            *location.z + v_range * a.1,
-                        ),
-                        vec3(
-                            *location.x + h_range * b.0,
-                            *location.y,
-                            *location.z + v_range * b.1,
-                        ),
-                    );
-                    add_line(
-                        vec3(
-                            *location.x,
-                            *location.y + h_range * a.0,
-                            *location.z + v_range * a.1,
-                        ),
-                        vec3(
-                            *location.x,
-                            *location.y + h_range * b.0,
-                            *location.z + v_range * b.1,
-                        ),
-                    );
+                let segments = CIRCLE_SEGMENTS;
+                for rot in 0..ELLIPSOID_V_BANDS {
+                    let rot_angle = std::f32::consts::PI * rot as f32 / ELLIPSOID_V_BANDS as f32;
+                    let (rot_cos, rot_sin) = (rot_angle.cos(), rot_angle.sin());
+
+                    let mut iter = (0..segments / 2 + 1)
+                        .map(|i| {
+                            let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+                            (angle.cos(), angle.sin())
+                        })
+                        .peekable();
+                    while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
+                        // Rotate the vertical circle around the Z axis
+                        add_line(
+                            vec3(
+                                *location.x + h_range * a.0 * rot_cos,
+                                *location.y + h_range * a.0 * rot_sin,
+                                *location.z + v_range * a.1,
+                            ),
+                            vec3(
+                                *location.x + h_range * b.0 * rot_cos,
+                                *location.y + h_range * b.0 * rot_sin,
+                                *location.z + v_range * b.1,
+                            ),
+                        );
+                    }
                 }
             }
 
