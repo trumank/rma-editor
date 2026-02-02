@@ -66,7 +66,7 @@ fn build_primitives(
     let mut path = vec![];
 
     iter_features(pool, &features, &mut path, &mut |f, path| {
-        let objs = build_feature(pool, f.handle(), f, ctx);
+        let objs = build_feature(pool, f.handle(), f, ctx, None);
         if !objs.is_empty() {
             primitives.insert(path.to_vec(), objs);
         }
@@ -88,6 +88,11 @@ struct App {
     mode: AppMode,
     selected_room: Option<String>,
     selected_feature: Vec<usize>,
+    hovered_feature: Option<Vec<usize>>,
+    prev_hovered_feature: Option<Vec<usize>>,
+    highlighted_primitive: Option<Vec<Box<dyn Object>>>,
+    prev_selected_feature: Vec<usize>,
+    selected_primitive: Option<Vec<Box<dyn Object>>>,
     tx: std::sync::mpsc::Sender<(ObjectPool, ObjectHandle)>,
     spawner: futures::executor::LocalSpawner,
     task_handles: Vec<Result<(), futures::task::SpawnError>>,
@@ -183,6 +188,11 @@ pub fn run(mode: AppMode) -> Result<()> {
         mode,
         selected_room: None,
         selected_feature: vec![],
+        hovered_feature: None,
+        prev_hovered_feature: None,
+        highlighted_primitive: None,
+        prev_selected_feature: vec![],
+        selected_primitive: None,
         tx,
         spawner: ex.spawner(),
         task_handles: vec![],
@@ -286,6 +296,84 @@ pub fn run(mode: AppMode) -> Result<()> {
             frame_input.events.clear();
         }
 
+        // Update highlighted primitive if hover changed
+        if app.hovered_feature != app.prev_hovered_feature {
+            app.prev_hovered_feature = app.hovered_feature.clone();
+            app.highlighted_primitive = None;
+
+            if let (Some(ref hovered_path), Some(ref p), Some(h)) =
+                (&app.hovered_feature, &pool, root_handle)
+            {
+                // Navigate to the hovered feature
+                let room_features = rma::rma::load_room_features(p, h);
+                let mut path_iter = hovered_path.iter();
+                if let Some(&first) = path_iter.next() {
+                    if let Some(feature) = room_features.get(first) {
+                        let mut current = feature.clone();
+                        for &idx in path_iter {
+                            let children = current.get_child_features(p);
+                            if let Some(child) = children.get(idx) {
+                                current = child.clone();
+                            }
+                        }
+                        // Build highlighted version with bright yellow color
+                        let highlight_color = Srgba::new_opaque(255, 255, 100);
+                        let ctx = RMAContext {
+                            context: &app.context,
+                            wireframe_material: app.wireframe_material.clone(),
+                            wireframe_mesh: app.wireframe_mesh.clone(),
+                        };
+                        app.highlighted_primitive = Some(build_feature(
+                            p,
+                            current.handle(),
+                            &current,
+                            &ctx,
+                            Some(highlight_color),
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Update selected primitive if selection changed
+        if app.selected_feature != app.prev_selected_feature {
+            app.prev_selected_feature = app.selected_feature.clone();
+            app.selected_primitive = None;
+
+            if let (Some(ref p), Some(h)) = (&pool, root_handle) {
+                if !app.selected_feature.is_empty() {
+                    // Navigate to the selected feature
+                    let room_features = rma::rma::load_room_features(p, h);
+                    let mut path_iter = app.selected_feature.iter();
+                    if let Some(&first) = path_iter.next() {
+                        if let Some(feature) = room_features.get(first) {
+                            let mut current = feature.clone();
+                            for &idx in path_iter {
+                                let children = current.get_child_features(p);
+                                if let Some(child) = children.get(idx) {
+                                    current = child.clone();
+                                }
+                            }
+                            // Build selected version with cyan color
+                            let select_color = Srgba::new_opaque(100, 200, 255);
+                            let ctx = RMAContext {
+                                context: &app.context,
+                                wireframe_material: app.wireframe_material.clone(),
+                                wireframe_mesh: app.wireframe_mesh.clone(),
+                            };
+                            app.selected_primitive = Some(build_feature(
+                                p,
+                                current.handle(),
+                                &current,
+                                &ctx,
+                                Some(select_color),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         #[cfg(target_arch = "wasm32")]
         for event in &mut frame_input.events {
             if let Event::MouseWheel {
@@ -311,17 +399,37 @@ pub fn run(mode: AppMode) -> Result<()> {
                 axes.into_iter()
                     .chain(app.grid_objects.iter().map(|o| o.deref()))
                     .chain(app.primitives.iter().flatten().flat_map(|(path, p)| {
+                        // Skip hovered/selected primitives - we'll render special versions
+                        let is_hovered = app.hovered_feature.as_ref() == Some(path);
+                        let is_selected = &app.selected_feature == path;
                         app.states
                             .get(path)
                             .and_then(|state: &State| {
-                                state
-                                    .visible
-                                    .then(|| -> Box<dyn Iterator<Item = &dyn Object>> {
+                                (state.visible && !is_hovered && !is_selected).then(
+                                    || -> Box<dyn Iterator<Item = &dyn Object>> {
                                         Box::new(p.iter().map(|o| o.deref()))
-                                    })
+                                    },
+                                )
                             })
                             .unwrap_or_else(|| Box::new(std::iter::empty()))
-                    })),
+                    }))
+                    // Render selected primitive (cyan) - but not if it's also hovered
+                    .chain({
+                        let skip_selected =
+                            app.hovered_feature.as_ref() == Some(&app.selected_feature);
+                        app.selected_primitive
+                            .iter()
+                            .flatten()
+                            .filter(move |_| !skip_selected)
+                            .map(|o| o.deref())
+                    })
+                    // Render highlighted/hovered primitive (yellow) - always on top
+                    .chain(
+                        app.highlighted_primitive
+                            .iter()
+                            .flatten()
+                            .map(|o| o.deref()),
+                    ),
                 &[&light0, &light1],
             )
             .write(|| gui.render())
@@ -364,36 +472,53 @@ fn draw_panel<'g>(
                 states: &mut HashMap<Vec<usize>, State>,
                 selected_feature: &mut Vec<usize>,
                 deferred_select: &mut Vec<usize>,
+                hovered_feature: &mut Option<Vec<usize>>,
             ) {
                 path.push(0);
                 for (i, f) in f.iter().enumerate() {
                     *path.last_mut().unwrap() = i;
 
                     let id = ui.make_persistent_id(i);
-                    egui::collapsing_header::CollapsingState::load_with_default_open(
-                        ui.ctx(),
-                        id,
-                        true,
-                    )
-                    .show_header(ui, |ui| {
-                        ui.checkbox(&mut states.entry(path.clone()).or_default().visible, "");
-                        let mut checked = path == selected_feature;
-                        if ui.toggle_value(&mut checked, f.name()).changed() && checked {
-                            deferred_select.clone_from(path);
-                        }
-                    })
-                    .body(|ui| {
-                        let children = f.get_child_features(pool);
-                        features(
-                            ui,
-                            pool,
-                            path,
-                            &children,
-                            states,
-                            selected_feature,
-                            deferred_select,
+                    let mut is_hovered = false;
+                    let collapsing_response =
+                        egui::collapsing_header::CollapsingState::load_with_default_open(
+                            ui.ctx(),
+                            id,
+                            true,
                         )
-                    });
+                        .show_header(ui, |ui| {
+                            let checkbox = ui
+                                .checkbox(&mut states.entry(path.clone()).or_default().visible, "");
+                            if checkbox.hovered() {
+                                is_hovered = true;
+                            }
+                            let mut checked = path == selected_feature;
+                            let toggle = ui.toggle_value(&mut checked, f.name());
+                            if toggle.hovered() {
+                                is_hovered = true;
+                            }
+                            if toggle.changed() && checked {
+                                deferred_select.clone_from(path);
+                            }
+                        })
+                        .body(|ui| {
+                            let children = f.get_child_features(pool);
+                            features(
+                                ui,
+                                pool,
+                                path,
+                                &children,
+                                states,
+                                selected_feature,
+                                deferred_select,
+                                hovered_feature,
+                            )
+                        });
+
+                    // Check if header or any element is hovered
+                    if is_hovered || collapsing_response.0.hovered() {
+                        *hovered_feature = Some(path.clone());
+                    }
                 }
                 path.pop();
             }
@@ -447,6 +572,7 @@ fn draw_panel<'g>(
                                 if let (Some(p), Some(h)) = (pool.as_ref(), root_handle) {
                                     let room_features = rma::rma::load_room_features(p, h);
                                     let mut path = vec![];
+                                    app.hovered_feature = None; // Reset before checking
                                     features(
                                         ui,
                                         p,
@@ -455,6 +581,7 @@ fn draw_panel<'g>(
                                         &mut app.states,
                                         &mut app.selected_feature,
                                         &mut deferred_select,
+                                        &mut app.hovered_feature,
                                     );
                                 }
                                 ui.allocate_space(ui.available_size());

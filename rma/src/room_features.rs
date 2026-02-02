@@ -57,11 +57,13 @@ impl From<FVector> for Vector3<f32> {
 }
 
 /// Build 3D visualization for a room feature
+/// If `highlight_color` is Some, uses that color instead of the default feature color
 pub fn build_feature(
     pool: &ObjectPool,
     handle: ObjectHandle,
     feature: &RoomFeature,
     ctx: &RMAContext,
+    highlight_color: Option<Srgba>,
 ) -> Vec<Box<dyn Object>> {
     let obj = pool.get(handle).expect("Invalid handle");
     let props = obj.properties();
@@ -77,7 +79,19 @@ pub fn build_feature(
                 Mat4::from_translation(position.into())
                     * Mat4::from_nonuniform_scale(*extends.x, *extends.y, *extends.z),
             );
-            vec![Box::new(Gm::new(mesh, ctx.wireframe_material.clone()))]
+
+            let material = if let Some(color) = highlight_color {
+                PhysicalMaterial::new_opaque(
+                    ctx.context,
+                    &CpuMaterial {
+                        albedo: color,
+                        ..Default::default()
+                    },
+                )
+            } else {
+                ctx.wireframe_material.clone()
+            };
+            vec![Box::new(Gm::new(mesh, material))]
         }
 
         RoomFeature::FloodFillPillar(_) => {
@@ -85,7 +99,7 @@ pub fn build_feature(
             let mut lines = Vec::new();
 
             let points: Vec<FVector> = typed.points().iter().map(|p| p.location()).collect();
-            let color = Srgba::new_opaque(0, 200, 0);
+            let color = highlight_color.unwrap_or(Srgba::new_opaque(0, 200, 0));
 
             for pair in points.windows(2) {
                 lines.push(DebugLine {
@@ -103,7 +117,7 @@ pub fn build_feature(
         RoomFeature::FloodFillLine(_) => {
             let typed = UFloodFillLine::from_properties(props).unwrap();
             let mut lines = Vec::new();
-            let color = Srgba::new_opaque(200, 0, 0);
+            let color = highlight_color.unwrap_or(Srgba::new_opaque(200, 0, 0));
 
             let mut add_line = |p1: Vector3<f32>, p2: Vector3<f32>| {
                 lines.push(DebugLine {
@@ -233,7 +247,7 @@ pub fn build_feature(
             let location = typed.location();
             let entrance_type = typed.entrance_type();
 
-            let albedo = match entrance_type {
+            let albedo = highlight_color.unwrap_or_else(|| match entrance_type {
                 "ECaveEntranceType::EntranceAndExit" => Srgba {
                     r: 0,
                     g: 255,
@@ -264,7 +278,7 @@ pub fn build_feature(
                     b: 128,
                     a: 200,
                 },
-            };
+            });
 
             let mut sphere = Gm::new(
                 Mesh::new(ctx.context, &CpuMesh::sphere(16)),
@@ -286,17 +300,19 @@ pub fn build_feature(
             let typed = USpawnActorFeature::from_properties(props).unwrap();
             let location = typed.location();
 
+            let albedo = highlight_color.unwrap_or(Srgba {
+                r: 255,
+                g: 200,
+                b: 0,
+                a: 200,
+            });
+
             let mut obj = Gm::new(
                 Mesh::new(ctx.context, &CpuMesh::cone(16)),
                 PhysicalMaterial::new_opaque(
                     ctx.context,
                     &CpuMaterial {
-                        albedo: Srgba {
-                            r: 255,
-                            g: 200,
-                            b: 0,
-                            a: 200,
-                        },
+                        albedo,
                         ..Default::default()
                     },
                 ),
@@ -313,27 +329,29 @@ pub fn build_feature(
             let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
             let location = typed.location();
 
-            let mut sphere = Gm::new(
+            let albedo = highlight_color.unwrap_or(Srgba {
+                r: 0,
+                g: 255,
+                b: 0,
+                a: 200,
+            });
+
+            let mut obj = Gm::new(
                 Mesh::new(ctx.context, &CpuMesh::cylinder(16)),
                 PhysicalMaterial::new_opaque(
                     ctx.context,
                     &CpuMaterial {
-                        albedo: Srgba {
-                            r: 0,
-                            g: 255,
-                            b: 0,
-                            a: 200,
-                        },
+                        albedo,
                         ..Default::default()
                     },
                 ),
             );
-            sphere.set_transformation(
+            obj.set_transformation(
                 Mat4::from_translation(location.into())
                     * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
                     * Mat4::from_angle_y(Radians::turn_div_4()),
             );
-            vec![Box::new(sphere)]
+            vec![Box::new(obj)]
         }
 
         _ => Vec::new(),
