@@ -1,8 +1,16 @@
 #![allow(special_module_name)]
 pub mod debug_lines;
+pub mod fly_control;
 pub mod rma;
 pub mod room_features;
 pub mod typed_properties;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CameraMode {
+    #[default]
+    Orbit,
+    Fly,
+}
 
 #[cfg(target_arch = "wasm32")]
 mod main;

@@ -4,6 +4,8 @@ use crate as rma;
 use anyhow::Result;
 use log::info;
 use rma::AppMode;
+use rma::CameraMode;
+use rma::fly_control::FlyControl;
 use rma::rma::FQuat;
 use rma::rma::FTransform;
 use rma::rma::FVector;
@@ -104,6 +106,9 @@ struct App {
     grid_objects: Vec<Box<dyn Object>>,
     camera: Camera,
     gizmos: Vec<Gizmo>,
+    camera_mode: CameraMode,
+    prev_camera_mode: CameraMode,
+    fly_control: FlyControl,
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
@@ -125,16 +130,21 @@ pub fn run(mode: AppMode) -> Result<()> {
     .unwrap();
     let context = window.gl();
 
+    let initial_camera_pos = vec3(5000.0, 0.0, 2.5);
+    let initial_camera_target = vec3(0.0, 0.0, 0.0);
+    let initial_camera_up = vec3(0.0, 0.0, 1.0);
+
     let camera = Camera::new_perspective(
         window.viewport(),
-        vec3(5000.0, 0.0, 2.5),
-        vec3(0.0, 0.0, 0.0),
-        vec3(0.0, 0.0, 1.0),
+        initial_camera_pos,
+        initial_camera_target,
+        initial_camera_up,
         degrees(45.0),
         1.0,
         1000000.0,
     );
-    let mut control = OrbitControl::new(camera.target(), 1.0, 1000000.0);
+    let mut orbit_control = OrbitControl::new(camera.target(), 1.0, 1000000.0);
+    let mut last_time = 0.0f64;
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -202,6 +212,9 @@ pub fn run(mode: AppMode) -> Result<()> {
         wireframe_mesh,
         camera,
         gizmos: vec![],
+        camera_mode: CameraMode::default(),
+        prev_camera_mode: CameraMode::default(),
+        fly_control: FlyControl::default(),
     };
 
     window.render_loop(move |mut frame_input| {
@@ -389,7 +402,30 @@ pub fn run(mode: AppMode) -> Result<()> {
                 }
             }
         }
-        control.handle_events(&mut app.camera, &mut frame_input.events);
+        // Compute delta time
+        let dt = (frame_input.accumulated_time - last_time) as f32;
+        last_time = frame_input.accumulated_time;
+
+        // Reset camera when switching back to orbit mode
+        if app.camera_mode != app.prev_camera_mode {
+            if app.camera_mode == CameraMode::Orbit {
+                app.camera
+                    .set_view(initial_camera_pos, initial_camera_target, initial_camera_up);
+                orbit_control = OrbitControl::new(initial_camera_target, 1.0, 1000000.0);
+            }
+            app.prev_camera_mode = app.camera_mode;
+        }
+
+        // Handle camera events based on mode
+        match app.camera_mode {
+            CameraMode::Orbit => {
+                orbit_control.handle_events(&mut app.camera, &mut frame_input.events);
+            }
+            CameraMode::Fly => {
+                app.fly_control
+                    .handle_events(&mut app.camera, &mut frame_input.events, dt);
+            }
+        }
 
         frame_input
             .screen()
@@ -455,6 +491,21 @@ fn draw_panel<'g>(
         .min_width(app.panel_width)
         .max_width(app.panel_width)
         .show(ctx, |ui| {
+            // Camera mode selector
+            ui.horizontal(|ui| {
+                ui.label("Camera:");
+                ui.selectable_value(&mut app.camera_mode, CameraMode::Orbit, "Orbit");
+                ui.selectable_value(&mut app.camera_mode, CameraMode::Fly, "Fly");
+            });
+            if app.camera_mode == CameraMode::Fly {
+                ui.label(format!(
+                    "Speed: {:.0} (scroll to adjust)",
+                    app.fly_control.speed()
+                ));
+                ui.label("WASD: move, Q/E: down/up, RMB: look");
+            }
+            ui.separator();
+
             // TODO: Implement save using asset_ser::saver::save_asset
             // if pool.is_some() && root_handle.is_some() && ui.button("save").clicked() {
             //     ui.label("Save not yet implemented with asset_ser");
