@@ -3061,6 +3061,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "asset_ser",
+ "cgmath",
  "clap",
  "csgrs",
  "egui_extras",
@@ -3575,7 +3576,7 @@ dependencies = [
 [[package]]
 name = "three-d"
 version = "0.19.0"
-source = "git+https://github.com/trumank/three-d#43dac28b24b2a13a3f4c65ea7ef48780a93aae63"
+source = "git+https://github.com/trumank/three-d#41395aa8a3e9cae94c7fa6c38f81ce2e3b100a7f"
 dependencies = [
  "cgmath",
  "egui",

@@ -1,12 +1,11 @@
 use anyhow::Result;
 use log::info;
 use rma::AppMode;
-use rma::CameraMode;
 use rma::RenderMode;
 use rma::convert::load_room_generator;
 use rma::objects::{FQuat, FTransform, FVector, URoomFeature, URoomGenerator};
 use rma::scene::csg_mesh::{HasVisible, build_csg_from_features, csg_to_three_d_mesh};
-use rma::scene::fly_control::FlyControl;
+use rma::scene::fly_control::{Camera, CameraControl};
 use rma::scene::room_features::Gizmos;
 use rma::scene::room_features::build_feature;
 use rma::scene::room_features::build_grid_planes;
@@ -97,7 +96,7 @@ fn build_csg_mesh_object(
             ..Default::default()
         },
     );
-    // One-sided mesh - cull front faces so cave interior is visible from outside
+    // One-sided mesh
     material.render_states.cull = Cull::Front;
 
     Some(Box::new(Gm::new(mesh, material)))
@@ -139,11 +138,9 @@ struct App {
     grid_objects: Vec<Box<dyn Object>>,
     camera: Camera,
     gizmos: Vec<Gizmo>,
-    camera_mode: CameraMode,
-    prev_camera_mode: CameraMode,
+    control: CameraControl,
     render_mode: RenderMode,
     prev_render_mode: RenderMode,
-    fly_control: FlyControl,
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
@@ -161,20 +158,22 @@ pub fn run(mode: AppMode) -> Result<()> {
     .unwrap();
     let context = window.gl();
 
-    let initial_camera_pos = vec3(5000.0, 0.0, 2.5);
-    let initial_camera_target = vec3(0.0, 0.0, 0.0);
-    let initial_camera_up = vec3(0.0, 0.0, 1.0);
+    let initial_target = vec3(0.0, 0.0, 0.0);
+    let initial_distance = 5000.0;
+    let initial_yaw = std::f32::consts::PI; // Looking toward -X
+    let initial_pitch = 0.0;
 
-    let camera = Camera::new_perspective(
+    let camera = Camera::new_orbit(
         window.viewport(),
-        initial_camera_pos,
-        initial_camera_target,
-        initial_camera_up,
+        initial_target,
+        initial_distance,
+        initial_yaw,
+        initial_pitch,
         degrees(45.0),
         1.0,
         1000000.0,
     );
-    let mut orbit_control = OrbitControl::new(camera.target(), 1.0, 1000000.0);
+    let control = CameraControl::new(1.0, 1000000.0);
     let mut last_time = 0.0f64;
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
@@ -251,11 +250,9 @@ pub fn run(mode: AppMode) -> Result<()> {
         wireframe_mesh,
         camera,
         gizmos: vec![],
-        camera_mode: CameraMode::default(),
-        prev_camera_mode: CameraMode::default(),
+        control,
         render_mode,
         prev_render_mode: render_mode,
-        fly_control: FlyControl::default(),
     };
 
     window.render_loop(move |mut frame_input| {
@@ -412,26 +409,9 @@ pub fn run(mode: AppMode) -> Result<()> {
         let dt = (frame_input.accumulated_time - last_time) as f32;
         last_time = frame_input.accumulated_time;
 
-        // Reset camera when switching back to orbit mode
-        if app.camera_mode != app.prev_camera_mode {
-            if app.camera_mode == CameraMode::Orbit {
-                app.camera
-                    .set_view(initial_camera_pos, initial_camera_target, initial_camera_up);
-                orbit_control = OrbitControl::new(initial_camera_target, 1.0, 1000000.0);
-            }
-            app.prev_camera_mode = app.camera_mode;
-        }
-
-        // Handle camera events based on mode
-        match app.camera_mode {
-            CameraMode::Orbit => {
-                orbit_control.handle_events(&mut app.camera, &mut frame_input.events);
-            }
-            CameraMode::Fly => {
-                app.fly_control
-                    .handle_events(&mut app.camera, &mut frame_input.events, dt);
-            }
-        }
+        // Handle camera events
+        app.control
+            .handle_events(&mut app.camera.state, &mut frame_input.events, dt);
 
         frame_input
             .screen()
@@ -459,7 +439,18 @@ pub fn run(mode: AppMode) -> Result<()> {
             .write(|| gui.render())
             .unwrap();
 
-        FrameOutput::default()
+        // Set cursor grab based on camera look state
+        let (cursor_grab, cursor_visible) = if app.control.left_pressed {
+            (Some(CursorGrabMode::Confined), Some(false))
+        } else {
+            (Some(CursorGrabMode::None), Some(true))
+        };
+
+        FrameOutput {
+            cursor_grab,
+            cursor_visible,
+            ..Default::default()
+        }
     });
 
     Ok(())
@@ -475,15 +466,25 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
             // Camera mode selector
             ui.horizontal(|ui| {
                 ui.label("Camera:");
-                ui.selectable_value(&mut app.camera_mode, CameraMode::Orbit, "Orbit");
-                ui.selectable_value(&mut app.camera_mode, CameraMode::Fly, "Fly");
+                if ui
+                    .selectable_label(app.camera.state.is_orbit(), "Orbit")
+                    .clicked()
+                {
+                    app.camera.state = app.camera.state.to_orbit(5000.0);
+                }
+                if ui
+                    .selectable_label(app.camera.state.is_fly(), "Fly")
+                    .clicked()
+                {
+                    app.camera.state = app.camera.state.to_fly();
+                }
             });
-            if app.camera_mode == CameraMode::Fly {
+            if app.camera.state.is_fly() {
                 ui.label(format!(
                     "Speed: {:.0} (scroll to adjust)",
-                    app.fly_control.speed()
+                    app.control.fly_speed
                 ));
-                ui.label("WASD: move, Q/E: down/up, RMB: look");
+                ui.label("WASD: move, Space/Shift: up/down, LMB: look");
             }
             ui.separator();
 
@@ -495,17 +496,15 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
             });
             ui.separator();
 
-            if let AppMode::Editor { path } = &app.mode {
-                if app.room.is_some() && ui.button("Save").clicked() {
-                    if let Some(room) = &app.room {
+            if let AppMode::Editor { path } = &app.mode
+                && app.room.is_some() && ui.button("Save").clicked()
+                    && let Some(room) = &app.room {
                         if let Err(e) = rma::save_room(Path::new(path), room) {
                             eprintln!("Failed to save: {}", e);
                         } else {
                             eprintln!("Saved to {}", path);
                         }
                     }
-                }
-            }
 
             #[allow(clippy::too_many_arguments)]
             fn features(
@@ -735,9 +734,10 @@ fn draw_gizmo(
                         // Fixed camera position
                         let snapping = ui.input(|input| input.modifiers.ctrl);
 
+                        let (view, proj) = (app.camera.view(), app.camera.projection());
                         gizmo.update_config(GizmoConfig {
-                            view_matrix: convert_mat4_to_mint(&app.camera.view()),
-                            projection_matrix: convert_mat4_to_mint(&app.camera.projection()),
+                            view_matrix: convert_mat4_to_mint(&view),
+                            projection_matrix: convert_mat4_to_mint(&proj),
                             viewport,
                             modes,
                             orientation: GizmoOrientation::Local,
