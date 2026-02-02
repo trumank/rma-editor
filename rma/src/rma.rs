@@ -72,10 +72,10 @@ impl From<FRotator> for Rotator {
 
 /// Transform (translation + rotation + scale)
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[allow(non_snake_case)]
 pub struct FTransform {
     pub translation: FVector,
     pub rotation: FQuat,
-    #[allow(non_snake_case)]
     pub Scale3D: FVector,
 }
 

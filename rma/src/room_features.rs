@@ -3,8 +3,8 @@
 //! This module provides 3D visualization and egui editors for RMA room features.
 
 use three_d::{
-    egui, vec2, vec3, Angle, BoundingBox, CpuMaterial, CpuMesh, Gm, InnerSpace, Mat4, Mesh, Object,
-    PhysicalMaterial, Radians, Srgba, Vector3,
+    Angle, BoundingBox, CpuMaterial, CpuMesh, Gm, InnerSpace, Mat4, Mesh, Object, PhysicalMaterial,
+    Radians, Srgba, Vector3, egui, vec2, vec3,
 };
 use transform_gizmo_egui::GizmoMode;
 
@@ -13,11 +13,11 @@ use crate::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
 use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
 
 use crate::{
+    RMAContext,
     rma::{
         FTransform, FVector, RoomFeature, TypedProperties, UDropPodCalldownLocationFeature,
         UEntranceFeature, UFloodFillBox, UFloodFillLine, UFloodFillPillar, USpawnActorFeature,
     },
-    RMAContext,
 };
 
 // Wireframe visualization constants
@@ -25,24 +25,6 @@ const CIRCLE_SEGMENTS: usize = 40;
 const ELLIPSOID_H_BANDS: usize = 2;
 const ELLIPSOID_V_BANDS: usize = 2;
 const CONNECTOR_BANDS: usize = 2;
-
-trait ChangedTrait {
-    fn c(&self, changed: &mut bool);
-}
-impl ChangedTrait for egui::Response {
-    fn c(&self, changed: &mut bool) {
-        if self.changed() {
-            *changed = true;
-        }
-    }
-}
-impl ChangedTrait for bool {
-    fn c(&self, changed: &mut bool) {
-        if *self {
-            *changed = true;
-        }
-    }
-}
 
 pub type Gizmos<'s> = Vec<(
     enumset::EnumSet<GizmoMode>,
@@ -247,7 +229,7 @@ pub fn build_feature(
             let location = typed.location();
             let entrance_type = typed.entrance_type();
 
-            let albedo = highlight_color.unwrap_or_else(|| match entrance_type {
+            let albedo = highlight_color.unwrap_or(match entrance_type {
                 "ECaveEntranceType::EntranceAndExit" => Srgba {
                     r: 0,
                     g: 255,
@@ -364,7 +346,7 @@ pub fn edit_feature<'s>(
     handle: ObjectHandle,
     feature: &RoomFeature,
     ui: &mut egui::Ui,
-    gizmos: &mut Gizmos<'s>,
+    _gizmos: &mut Gizmos<'s>,
 ) -> bool {
     // For now, just show the feature name
     // Full editing support requires more work to handle mutable property access
@@ -417,19 +399,6 @@ pub fn edit_feature<'s>(
             false
         }
     }
-}
-
-fn vector3_editor(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
-    let mut changed = false;
-    ui.horizontal(|ui| {
-        ui.add(egui::DragValue::new(&mut *vec.x).speed(1.))
-            .c(&mut changed);
-        ui.add(egui::DragValue::new(&mut *vec.y).speed(1.))
-            .c(&mut changed);
-        ui.add(egui::DragValue::new(&mut *vec.z).speed(1.))
-            .c(&mut changed);
-    });
-    changed
 }
 
 /// Axis-aligned bounding box with min/max corners

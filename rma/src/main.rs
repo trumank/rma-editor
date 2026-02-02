@@ -2,17 +2,16 @@
 use crate as rma;
 
 use anyhow::Result;
-use futures::task::LocalSpawnExt;
 use log::info;
+use rma::AppMode;
 use rma::rma::FQuat;
 use rma::rma::FTransform;
 use rma::rma::FVector;
 use rma::rma::RoomFeature;
+use rma::room_features::Gizmos;
 use rma::room_features::build_feature;
 use rma::room_features::build_grid_planes;
 use rma::room_features::compute_room_bounds;
-use rma::room_features::Gizmos;
-use rma::AppMode;
 use three_d::*;
 use transform_gizmo_egui::Gizmo;
 use transform_gizmo_egui::GizmoConfig;
@@ -83,6 +82,7 @@ impl Default for State {
     }
 }
 
+#[allow(clippy::type_complexity)]
 struct App {
     panel_width: f32,
     mode: AppMode,
@@ -93,9 +93,9 @@ struct App {
     highlighted_primitive: Option<Vec<Box<dyn Object>>>,
     prev_selected_feature: Vec<usize>,
     selected_primitive: Option<Vec<Box<dyn Object>>>,
-    tx: std::sync::mpsc::Sender<(ObjectPool, ObjectHandle)>,
-    spawner: futures::executor::LocalSpawner,
-    task_handles: Vec<Result<(), futures::task::SpawnError>>,
+    _tx: std::sync::mpsc::Sender<(ObjectPool, ObjectHandle)>,
+    _spawner: futures::executor::LocalSpawner,
+    _task_handles: Vec<Result<(), futures::task::SpawnError>>,
     states: HashMap<Vec<usize>, State>,
     context: three_d::core::Context,
     wireframe_material: PhysicalMaterial,
@@ -125,7 +125,7 @@ pub fn run(mode: AppMode) -> Result<()> {
     .unwrap();
     let context = window.gl();
 
-    let mut camera = Camera::new_perspective(
+    let camera = Camera::new_perspective(
         window.viewport(),
         vec3(5000.0, 0.0, 2.5),
         vec3(0.0, 0.0, 0.0),
@@ -134,7 +134,7 @@ pub fn run(mode: AppMode) -> Result<()> {
         1.0,
         1000000.0,
     );
-    let mut control = OrbitControl::new(camera.target().clone(), 1.0, 1000000.0);
+    let mut control = OrbitControl::new(camera.target(), 1.0, 1000000.0);
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -193,9 +193,9 @@ pub fn run(mode: AppMode) -> Result<()> {
         highlighted_primitive: None,
         prev_selected_feature: vec![],
         selected_primitive: None,
-        tx,
-        spawner: ex.spawner(),
-        task_handles: vec![],
+        _tx: tx,
+        _spawner: ex.spawner(),
+        _task_handles: vec![],
         states: HashMap::new(),
         context,
         wireframe_material,
@@ -301,36 +301,36 @@ pub fn run(mode: AppMode) -> Result<()> {
             app.prev_hovered_feature = app.hovered_feature.clone();
             app.highlighted_primitive = None;
 
-            if let (Some(ref hovered_path), Some(ref p), Some(h)) =
+            if let (Some(hovered_path), Some(p), Some(h)) =
                 (&app.hovered_feature, &pool, root_handle)
             {
                 // Navigate to the hovered feature
                 let room_features = rma::rma::load_room_features(p, h);
                 let mut path_iter = hovered_path.iter();
-                if let Some(&first) = path_iter.next() {
-                    if let Some(feature) = room_features.get(first) {
-                        let mut current = feature.clone();
-                        for &idx in path_iter {
-                            let children = current.get_child_features(p);
-                            if let Some(child) = children.get(idx) {
-                                current = child.clone();
-                            }
+                if let Some(&first) = path_iter.next()
+                    && let Some(feature) = room_features.get(first)
+                {
+                    let mut current = feature.clone();
+                    for &idx in path_iter {
+                        let children = current.get_child_features(p);
+                        if let Some(child) = children.get(idx) {
+                            current = child.clone();
                         }
-                        // Build highlighted version with bright yellow color
-                        let highlight_color = Srgba::new_opaque(255, 255, 100);
-                        let ctx = RMAContext {
-                            context: &app.context,
-                            wireframe_material: app.wireframe_material.clone(),
-                            wireframe_mesh: app.wireframe_mesh.clone(),
-                        };
-                        app.highlighted_primitive = Some(build_feature(
-                            p,
-                            current.handle(),
-                            &current,
-                            &ctx,
-                            Some(highlight_color),
-                        ));
                     }
+                    // Build highlighted version with bright yellow color
+                    let highlight_color = Srgba::new_opaque(255, 255, 100);
+                    let ctx = RMAContext {
+                        context: &app.context,
+                        wireframe_material: app.wireframe_material.clone(),
+                        wireframe_mesh: app.wireframe_mesh.clone(),
+                    };
+                    app.highlighted_primitive = Some(build_feature(
+                        p,
+                        current.handle(),
+                        &current,
+                        &ctx,
+                        Some(highlight_color),
+                    ));
                 }
             }
         }
@@ -340,36 +340,36 @@ pub fn run(mode: AppMode) -> Result<()> {
             app.prev_selected_feature = app.selected_feature.clone();
             app.selected_primitive = None;
 
-            if let (Some(ref p), Some(h)) = (&pool, root_handle) {
-                if !app.selected_feature.is_empty() {
-                    // Navigate to the selected feature
-                    let room_features = rma::rma::load_room_features(p, h);
-                    let mut path_iter = app.selected_feature.iter();
-                    if let Some(&first) = path_iter.next() {
-                        if let Some(feature) = room_features.get(first) {
-                            let mut current = feature.clone();
-                            for &idx in path_iter {
-                                let children = current.get_child_features(p);
-                                if let Some(child) = children.get(idx) {
-                                    current = child.clone();
-                                }
-                            }
-                            // Build selected version with cyan color
-                            let select_color = Srgba::new_opaque(100, 200, 255);
-                            let ctx = RMAContext {
-                                context: &app.context,
-                                wireframe_material: app.wireframe_material.clone(),
-                                wireframe_mesh: app.wireframe_mesh.clone(),
-                            };
-                            app.selected_primitive = Some(build_feature(
-                                p,
-                                current.handle(),
-                                &current,
-                                &ctx,
-                                Some(select_color),
-                            ));
+            if let (Some(p), Some(h)) = (&pool, root_handle)
+                && !app.selected_feature.is_empty()
+            {
+                // Navigate to the selected feature
+                let room_features = rma::rma::load_room_features(p, h);
+                let mut path_iter = app.selected_feature.iter();
+                if let Some(&first) = path_iter.next()
+                    && let Some(feature) = room_features.get(first)
+                {
+                    let mut current = feature.clone();
+                    for &idx in path_iter {
+                        let children = current.get_child_features(p);
+                        if let Some(child) = children.get(idx) {
+                            current = child.clone();
                         }
                     }
+                    // Build selected version with cyan color
+                    let select_color = Srgba::new_opaque(100, 200, 255);
+                    let ctx = RMAContext {
+                        context: &app.context,
+                        wireframe_material: app.wireframe_material.clone(),
+                        wireframe_mesh: app.wireframe_mesh.clone(),
+                    };
+                    app.selected_primitive = Some(build_feature(
+                        p,
+                        current.handle(),
+                        &current,
+                        &ctx,
+                        Some(select_color),
+                    ));
                 }
             }
         }
@@ -455,15 +455,12 @@ fn draw_panel<'g>(
         .min_width(app.panel_width)
         .max_width(app.panel_width)
         .show(ctx, |ui| {
-            ui.heading("Debug Panel");
+            // TODO: Implement save using asset_ser::saver::save_asset
+            // if pool.is_some() && root_handle.is_some() && ui.button("save").clicked() {
+            //     ui.label("Save not yet implemented with asset_ser");
+            // }
 
-            if pool.is_some() && root_handle.is_some() {
-                if ui.button("save").clicked() {
-                    // TODO: Implement save using asset_ser::saver::save_asset
-                    ui.label("Save not yet implemented with asset_ser");
-                }
-            }
-
+            #[allow(clippy::too_many_arguments)]
             fn features(
                 ui: &mut Ui,
                 pool: &ObjectPool,
@@ -643,108 +640,112 @@ fn draw_gizmo(
         .fixed_pos(viewport.min)
         .constrain_to(viewport)
         .show(ctx, |ui| {
-            ui.with_layer_id(egui::LayerId::background(), |ui| {
-                while app.gizmos.len() < gizmos.len() {
-                    app.gizmos.push(Default::default());
-                }
-                while app.gizmos.len() > gizmos.len() {
-                    app.gizmos.pop();
-                }
+            ui.scope_builder(
+                egui::UiBuilder::new().layer_id(egui::LayerId::background()),
+                |ui| {
+                    while app.gizmos.len() < gizmos.len() {
+                        app.gizmos.push(Default::default());
+                    }
+                    while app.gizmos.len() > gizmos.len() {
+                        app.gizmos.pop();
+                    }
 
-                let mut already_interacted = false;
+                    let mut already_interacted = false;
 
-                for ((modes, start, cb), gizmo) in gizmos.into_iter().zip(app.gizmos.iter_mut()) {
-                    pub fn convert_mat4_to_mint(
-                        mat: &Mat4,
-                    ) -> transform_gizmo_egui::mint::RowMatrix4<f64> {
-                        #[rustfmt::skip]
+                    for ((modes, start, cb), gizmo) in gizmos.into_iter().zip(app.gizmos.iter_mut())
+                    {
+                        pub fn convert_mat4_to_mint(
+                            mat: &Mat4,
+                        ) -> transform_gizmo_egui::mint::RowMatrix4<f64> {
+                            #[rustfmt::skip]
                         let tab: [[f64; 4]; 4] = [
                             [mat.x.x as f64, mat.y.x as f64, mat.z.x as f64, mat.w.x as f64],
                             [mat.x.y as f64, mat.y.y as f64, mat.z.y as f64, mat.w.y as f64],
                             [mat.x.z as f64, mat.y.z as f64, mat.z.z as f64, mat.w.z as f64],
                             [mat.x.w as f64, mat.y.w as f64, mat.z.w as f64, mat.w.w as f64],
                         ];
-                        transform_gizmo_egui::mint::RowMatrix4::from(tab)
-                    }
-
-                    // Fixed camera position
-                    let snapping = ui.input(|input| input.modifiers.ctrl);
-
-                    gizmo.update_config(GizmoConfig {
-                        view_matrix: convert_mat4_to_mint(&app.camera.view()),
-                        projection_matrix: convert_mat4_to_mint(&app.camera.projection()),
-                        viewport,
-                        modes,
-                        orientation: GizmoOrientation::Local,
-                        snapping,
-                        ..Default::default()
-                    });
-
-                    let mut transform =
-                        transform_gizmo_egui::math::Transform::from_scale_rotation_translation(
-                            [
-                                start.Scale3D.x.0 as f64,
-                                start.Scale3D.y.0 as f64,
-                                start.Scale3D.z.0 as f64,
-                            ],
-                            [
-                                start.rotation.x.0 as f64,
-                                start.rotation.y.0 as f64,
-                                start.rotation.z.0 as f64,
-                                start.rotation.w.0 as f64,
-                            ],
-                            [
-                                start.translation.x.0 as f64,
-                                start.translation.y.0 as f64,
-                                start.translation.z.0 as f64,
-                            ],
-                        );
-
-                    if let Some((_result, new_transforms)) =
-                        gizmo.interact2(ui, &[transform], !already_interacted)
-                    {
-                        already_interacted = true;
-                        *clear_events = true;
-
-                        for (new_transform, transform) in
-                            new_transforms.iter().zip(std::iter::once(&mut transform))
-                        {
-                            *transform = *new_transform;
+                            transform_gizmo_egui::mint::RowMatrix4::from(tab)
                         }
 
-                        *changed = true;
+                        // Fixed camera position
+                        let snapping = ui.input(|input| input.modifiers.ctrl);
 
-                        let new_transform = FTransform {
-                            translation: FVector {
-                                x: (transform.translation.x as f32).into(),
-                                y: (transform.translation.y as f32).into(),
-                                z: (transform.translation.z as f32).into(),
-                            },
-                            rotation: FQuat {
-                                x: (transform.rotation.v.x as f32).into(),
-                                y: (transform.rotation.v.y as f32).into(),
-                                z: (transform.rotation.v.z as f32).into(),
-                                w: (transform.rotation.s as f32).into(),
-                            },
-                            Scale3D: FVector {
-                                x: (transform.scale.x as f32).into(),
-                                y: (transform.scale.y as f32).into(),
-                                z: (transform.scale.z as f32).into(),
-                            },
-                        };
-                        println!(
-                            "Gizmo transform: translation=({}, {}, {}), scale=({}, {}, {})",
-                            new_transform.translation.x,
-                            new_transform.translation.y,
-                            new_transform.translation.z,
-                            new_transform.Scale3D.x,
-                            new_transform.Scale3D.y,
-                            new_transform.Scale3D.z
-                        );
-                        cb(new_transform);
+                        gizmo.update_config(GizmoConfig {
+                            view_matrix: convert_mat4_to_mint(&app.camera.view()),
+                            projection_matrix: convert_mat4_to_mint(&app.camera.projection()),
+                            viewport,
+                            modes,
+                            orientation: GizmoOrientation::Local,
+                            snapping,
+                            ..Default::default()
+                        });
+
+                        let mut transform =
+                            transform_gizmo_egui::math::Transform::from_scale_rotation_translation(
+                                [
+                                    start.Scale3D.x.0 as f64,
+                                    start.Scale3D.y.0 as f64,
+                                    start.Scale3D.z.0 as f64,
+                                ],
+                                [
+                                    start.rotation.x.0 as f64,
+                                    start.rotation.y.0 as f64,
+                                    start.rotation.z.0 as f64,
+                                    start.rotation.w.0 as f64,
+                                ],
+                                [
+                                    start.translation.x.0 as f64,
+                                    start.translation.y.0 as f64,
+                                    start.translation.z.0 as f64,
+                                ],
+                            );
+
+                        if let Some((_result, new_transforms)) =
+                            gizmo.interact2(ui, &[transform], !already_interacted)
+                        {
+                            already_interacted = true;
+                            *clear_events = true;
+
+                            for (new_transform, transform) in
+                                new_transforms.iter().zip(std::iter::once(&mut transform))
+                            {
+                                *transform = *new_transform;
+                            }
+
+                            *changed = true;
+
+                            let new_transform = FTransform {
+                                translation: FVector {
+                                    x: (transform.translation.x as f32).into(),
+                                    y: (transform.translation.y as f32).into(),
+                                    z: (transform.translation.z as f32).into(),
+                                },
+                                rotation: FQuat {
+                                    x: (transform.rotation.v.x as f32).into(),
+                                    y: (transform.rotation.v.y as f32).into(),
+                                    z: (transform.rotation.v.z as f32).into(),
+                                    w: (transform.rotation.s as f32).into(),
+                                },
+                                Scale3D: FVector {
+                                    x: (transform.scale.x as f32).into(),
+                                    y: (transform.scale.y as f32).into(),
+                                    z: (transform.scale.z as f32).into(),
+                                },
+                            };
+                            println!(
+                                "Gizmo transform: translation=({}, {}, {}), scale=({}, {}, {})",
+                                new_transform.translation.x,
+                                new_transform.translation.y,
+                                new_transform.translation.z,
+                                new_transform.Scale3D.x,
+                                new_transform.Scale3D.y,
+                                new_transform.Scale3D.z
+                            );
+                            cb(new_transform);
+                        }
                     }
-                }
-            })
+                },
+            )
         });
 }
 

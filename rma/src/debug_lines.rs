@@ -3,9 +3,9 @@
 //! Lines maintain constant screen-space thickness regardless of distance from camera.
 
 use three_d::{
-    vec2, vec3, AxisAlignedBoundingBox, ColorTexture, Context, DepthTest, DepthTexture, Effect,
+    AxisAlignedBoundingBox, ColorTexture, Context, DepthTest, DepthTexture, Effect,
     EffectMaterialId, ElementBuffer, Geometry, GeometryId, Light, Material, MaterialType, Program,
-    RenderStates, Srgba, Vec2, Vec3, Vec4, VertexBuffer, Viewer,
+    RenderStates, Srgba, Vec2, Vec3, Vec4, VertexBuffer, Viewer, vec2, vec3,
 };
 
 /// A single debug line with start point, end point, and color.
