@@ -18,6 +18,7 @@ use std::path::Path;
 
 /// Test full round-trip: load asset, rebuild components, verify structure
 #[test]
+#[ignore = "needs jmap"]
 fn test_full_round_trip_structure() -> anyhow::Result<()> {
     let name = "RMA_WallPlatforms.uasset";
     // let name= "RMA_2PArcsSPAWNER.uasset";
