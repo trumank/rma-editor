@@ -28,12 +28,15 @@ pub fn save_room_generator(
     save_room_generator_base(&mut props, &room.base);
 
     // Create this object first to get its handle for children's outer
+    // Root objects (no outer) get special flags
+    let is_root = outer.is_none();
     let self_handle = allocate_object(
         pool,
         name,
         outer.clone(),
         "/Script/FSD.RoomGenerator",
         props,
+        is_root,
     );
     let self_ref = ObjectRef::Loaded(self_handle);
 
@@ -77,7 +80,8 @@ pub fn save_room_feature(
         save_feature_type_props(pool, &mut props, &feature.feature_type, outer.clone(), name)?;
 
     // Create this object first to get its handle for children's outer
-    let self_handle = allocate_object(pool, name, outer.clone(), &class_path, props);
+    // Child features are never root objects
+    let self_handle = allocate_object(pool, name, outer.clone(), &class_path, props, false);
     let self_ref = ObjectRef::Loaded(self_handle);
 
     // Create child features recursively
@@ -439,6 +443,7 @@ fn save_flood_fill_settings(
         outer.clone(),
         "/Script/FSD.FloodFillSettings",
         props,
+        false,
     );
 
     // Save noise layers
@@ -508,6 +513,7 @@ fn save_pillar_settings(
         outer.clone(),
         "/Script/FSD.PillarSettings",
         props,
+        false,
     );
 
     if let Some(noise) = &settings.noise {
@@ -529,12 +535,15 @@ fn save_room_group(
 ) -> Result<ObjectHandle> {
     let props = Properties::default();
 
+    // RoomGeneratorGroup is a root object
+    let is_root = outer.is_none();
     let handle = allocate_object(
         pool,
         name,
         outer.clone(),
         "/Script/FSD.RoomGeneratorGroup",
         props,
+        is_root,
     );
     let self_ref = ObjectRef::Loaded(handle);
 
@@ -564,15 +573,34 @@ fn allocate_object(
     outer: Option<ObjectRef>,
     class_path: &str,
     props: Properties<AssetArchiveType>,
+    is_root: bool,
 ) -> ObjectHandle {
     let mut uobj = UObject::default();
     *uobj.properties_mut() = props;
+
+    // Set object flags: root objects get RF_Public | RF_Standalone | RF_Transactional
+    if is_root {
+        uobj.object_flags = jmap::EObjectFlags::RF_Public
+            | jmap::EObjectFlags::RF_Standalone
+            | jmap::EObjectFlags::RF_Transactional;
+    }
+
+    // Extract class name from path (e.g., "/Script/FSD.RoomGenerator" -> "RoomGenerator")
+    let class_name = class_path.rsplit('.').next().unwrap_or("Object");
+    let template_path = format!(
+        "{}.Default__{}",
+        class_path
+            .rsplit_once('.')
+            .map(|(pkg, _)| pkg)
+            .unwrap_or("/Script/FSD"),
+        class_name
+    );
 
     let loaded_obj = LoadedObject {
         name: Name::new(name),
         outer,
         class: ObjectRef::Unloaded(class_path.into()),
-        template: None,
+        template: Some(ObjectRef::Unloaded(template_path.into())),
         object: Box::new(uobj),
     };
 

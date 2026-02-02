@@ -76,7 +76,14 @@ fn calculate_vertical_bias(x: f64, y: f64, center_x: f64, center_y: f64) -> f64 
     distance * VERTICAL_BIAS_STRENGTH as f64
 }
 
-fn make_line_point(x: f32, y: f32, z: f32, h_range: f32, v_range: f32, ceiling_height: f32) -> FRoomLinePoint {
+fn make_line_point(
+    x: f32,
+    y: f32,
+    z: f32,
+    h_range: f32,
+    v_range: f32,
+    ceiling_height: f32,
+) -> FRoomLinePoint {
     FRoomLinePoint {
         location: FVector { x, y, z },
         h_range,
@@ -100,8 +107,22 @@ fn create_drop_pod_landing(x: f32, y: f32, z: f32) -> Vec<URoomFeature> {
             floor_noise_override: None,
             use_detail_noise: false,
             points: vec![
-                make_line_point(x, y, z, DROP_POD_CHAMBER_H_RANGE, DROP_POD_CHAMBER_V_RANGE, DROP_POD_CEILING_HEIGHT),
-                make_line_point(x + 100.0, y + 100.0, z, DROP_POD_CHAMBER_H_RANGE, DROP_POD_CHAMBER_V_RANGE, DROP_POD_CEILING_HEIGHT),
+                make_line_point(
+                    x,
+                    y,
+                    z,
+                    DROP_POD_CHAMBER_H_RANGE,
+                    DROP_POD_CHAMBER_V_RANGE,
+                    DROP_POD_CEILING_HEIGHT,
+                ),
+                make_line_point(
+                    x + 100.0,
+                    y + 100.0,
+                    z,
+                    DROP_POD_CHAMBER_H_RANGE,
+                    DROP_POD_CHAMBER_V_RANGE,
+                    DROP_POD_CEILING_HEIGHT,
+                ),
             ],
         }),
     };
@@ -141,7 +162,8 @@ fn generate_chaotic_walk_points(num_points: usize, start: (f64, f64, f64)) -> Ve
 
         let pull_to_anchor = rand_range(&mut rng_seed, 0.0, 1.0);
         if pull_to_anchor > 0.75 && !anchor_points.is_empty() {
-            let anchor_idx = (rand_range(&mut rng_seed, 0.0, 1.0) * anchor_points.len() as f32) as usize;
+            let anchor_idx =
+                (rand_range(&mut rng_seed, 0.0, 1.0) * anchor_points.len() as f32) as usize;
             let anchor_idx = anchor_idx.min(anchor_points.len() - 1);
             let anchor = anchor_points[anchor_idx];
 
@@ -155,12 +177,19 @@ fn generate_chaotic_walk_points(num_points: usize, start: (f64, f64, f64)) -> Ve
 
             if turn_intensity > 0.85 {
                 current_angle_h = rand_range(&mut rng_seed, 0.0, 2.0 * std::f64::consts::PI as f32);
-                current_angle_v = rand_range(&mut rng_seed, -std::f64::consts::PI as f32 / 12.0, std::f64::consts::PI as f32 / 12.0);
+                current_angle_v = rand_range(
+                    &mut rng_seed,
+                    -std::f64::consts::PI as f32 / 12.0,
+                    std::f64::consts::PI as f32 / 12.0,
+                );
             } else {
                 let turn_h = rand_range(&mut rng_seed, -0.6, 0.6);
                 let turn_v = rand_range(&mut rng_seed, -0.05, 0.05);
                 current_angle_h += turn_h;
-                current_angle_v = (current_angle_v + turn_v).clamp(-std::f64::consts::PI as f32 / 12.0, std::f64::consts::PI as f32 / 12.0);
+                current_angle_v = (current_angle_v + turn_v).clamp(
+                    -std::f64::consts::PI as f32 / 12.0,
+                    std::f64::consts::PI as f32 / 12.0,
+                );
             }
         }
 
@@ -232,9 +261,15 @@ fn main() -> anyhow::Result<()> {
             let (h_mult, v_mult) = if is_chamber {
                 let chamber_type = rand_range(&mut rng_seed, 0.0, 1.0);
                 if chamber_type < 0.33 {
-                    (rand_range(&mut rng_seed, CHAMBER_H_MULT_MIN, CHAMBER_H_MULT_MAX), 1.0)
+                    (
+                        rand_range(&mut rng_seed, CHAMBER_H_MULT_MIN, CHAMBER_H_MULT_MAX),
+                        1.0,
+                    )
                 } else if chamber_type < 0.66 {
-                    (1.0, rand_range(&mut rng_seed, CHAMBER_V_MULT_MIN, CHAMBER_V_MULT_MAX))
+                    (
+                        1.0,
+                        rand_range(&mut rng_seed, CHAMBER_V_MULT_MIN, CHAMBER_V_MULT_MAX),
+                    )
                 } else {
                     (
                         rand_range(&mut rng_seed, CHAMBER_BOTH_MULT_MIN, CHAMBER_BOTH_MULT_MAX),
@@ -246,13 +281,18 @@ fn main() -> anyhow::Result<()> {
             };
 
             FRoomLinePoint {
-                location: FVector { x: x as f32, y: y as f32, z: z as f32 },
+                location: FVector {
+                    x: x as f32,
+                    y: y as f32,
+                    z: z as f32,
+                },
                 h_range: rand_range(&mut rng_seed, H_RANGE_MIN, H_RANGE_MAX) * h_mult,
                 v_range: rand_range(&mut rng_seed, V_RANGE_MIN, V_RANGE_MAX) * v_mult,
                 cieling_noise_range: rand_range(&mut rng_seed, 0.0, NOISE_RANGE_MAX),
                 wall_noise_range: rand_range(&mut rng_seed, 0.0, NOISE_RANGE_MAX),
                 floor_noise_range: rand_range(&mut rng_seed, 0.0, NOISE_RANGE_MAX),
-                cieling_height: rand_range(&mut rng_seed, CEILING_HEIGHT_MIN, CEILING_HEIGHT_MAX) * v_mult,
+                cieling_height: rand_range(&mut rng_seed, CEILING_HEIGHT_MIN, CEILING_HEIGHT_MAX)
+                    * v_mult,
                 height_scale: rand_range(&mut rng_seed, 0.5, 2.0),
                 floor_depth: 0.0,
                 floor_angle: rand_range(&mut rng_seed, -30.0, 30.0),

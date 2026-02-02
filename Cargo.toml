@@ -4,6 +4,7 @@ members = [
     "rma",
     "asset_ser",
 ]
+default-members = ["rma"]
 
 [workspace.package]
 repository = "https://github.com/trumank/rma-editor"

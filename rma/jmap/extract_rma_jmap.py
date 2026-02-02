@@ -15,6 +15,17 @@ def get_super_struct(obj: dict) -> str | None:
     return obj.get("super_struct")
 
 
+def get_class_default_object(obj: dict) -> str | None:
+    """Get the class_default_object (CDO) of a Class object."""
+    # Class objects have the CDO directly
+    if "class_default_object" in obj:
+        return obj["class_default_object"]
+    # Or nested in struct
+    if "struct" in obj and "object" in obj["struct"]:
+        return obj.get("class_default_object")
+    return None
+
+
 def extract_rma_objects(jmap_path: str, output_path: str, trace: str | None = None):
     with open(jmap_path) as f:
         jmap = json.load(f)
@@ -76,6 +87,17 @@ def extract_rma_objects(jmap_path: str, output_path: str, trace: str | None = No
                 parent[ref] = path
                 if ref in objects:
                     queue.append(ref)
+
+    # Also include class_default_objects (CDOs) for all needed classes
+    cdos = set()
+    for path in needed:
+        obj = objects.get(path, {})
+        # Check if this is a Class with a class_default_object
+        cdo = get_class_default_object(obj)
+        if cdo and cdo in objects:
+            cdos.add(cdo)
+    needed.update(cdos)
+    print(f"Added {len(cdos)} class default objects", file=sys.stderr)
 
     # Trace a specific path if requested
     if trace:

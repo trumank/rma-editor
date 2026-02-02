@@ -7,7 +7,14 @@ use std::path::PathBuf;
 
 use rma::objects::*;
 
-fn make_point(x: f32, y: f32, z: f32, h_range: f32, v_range: f32, floor_depth: f32) -> FRoomLinePoint {
+fn make_point(
+    x: f32,
+    y: f32,
+    z: f32,
+    h_range: f32,
+    v_range: f32,
+    floor_depth: f32,
+) -> FRoomLinePoint {
     FRoomLinePoint {
         location: FVector { x, y, z },
         h_range,
