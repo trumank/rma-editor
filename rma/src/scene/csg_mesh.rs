@@ -55,18 +55,39 @@ fn flood_fill_line_sdf(line: &UFloodFillLine) -> impl Fn(&Point3<f64>) -> f64 + 
                 b.location.z as f64,
             );
 
-            // Full 3D segment direction (nalgebra Vector3)
-            let ba = b_point - a_point;
-            let pa = p - a_point;
-            let ba_len_sq = ba.dot(&ba);
+            // Scale space for projection to account for anisotropic ellipsoid
+            // Use average of endpoint radii for consistent scaling
+            let avg_r_h = ((a.h_range + b.h_range) as f64 / 2.0).max(0.01);
+            let avg_r_v = ((a.v_range + b.v_range) as f64 / 2.0).max(0.01);
 
-            // Project point onto the 3D line segment
+            // Transform into normalized space where ellipsoid is more spherical
+            // We scale XY by 1/r_h and Z by 1/r_v
+            let a_scaled = Point3::new(
+                a_point.x / avg_r_h,
+                a_point.y / avg_r_h,
+                a_point.z / avg_r_v,
+            );
+            let b_scaled = Point3::new(
+                b_point.x / avg_r_h,
+                b_point.y / avg_r_h,
+                b_point.z / avg_r_v,
+            );
+            let p_scaled = Point3::new(p.x / avg_r_h, p.y / avg_r_h, p.z / avg_r_v);
+
+            // Project in scaled space for correct anisotropic handling
+            let ba_scaled = b_scaled - a_scaled;
+            let pa_scaled = p_scaled - a_scaled;
+            let ba_len_sq = ba_scaled.dot(&ba_scaled);
+
             let h = if ba_len_sq > 1e-12 {
-                pa.dot(&ba) / ba_len_sq
+                pa_scaled.dot(&ba_scaled) / ba_len_sq
             } else {
                 0.5
             };
             let t = h.clamp(0.0, 1.0);
+
+            // Segment direction in original space (needed for floor angle calculation)
+            let ba = b_point - a_point;
 
             // Interpolate all parameters
             let r_h = (a.h_range as f64 * (1.0 - t) + b.h_range as f64 * t).max(0.01);
