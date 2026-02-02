@@ -128,6 +128,9 @@ fn flood_fill_line_sdf(line: &UFloodFillLine) -> impl Fn(&Point3<f64>) -> f64 + 
 /// SDF for a FloodFillPillar - creates a capsule/pill shape along a polyline
 /// Pillars fill material (opposite of carving), so this SDF is used for subtraction
 fn flood_fill_pillar_sdf(pillar: &UFloodFillPillar) -> impl Fn(&Point3<f64>) -> f64 + '_ {
+    // Use average of min/max for deterministic scale
+    let range_scale = ((pillar.range_scale.min + pillar.range_scale.max) * 0.5) as f64;
+
     move |p: &Point3<f64>| {
         if pillar.points.is_empty() {
             return f64::INFINITY;
@@ -145,9 +148,9 @@ fn flood_fill_pillar_sdf(pillar: &UFloodFillPillar) -> impl Fn(&Point3<f64>) -> 
                 b.location.y as f64,
                 b.location.z as f64,
             );
-            // Use average of min/max for deterministic radius
-            let a_radius = ((a.range.min + a.range.max) * 0.5) as f64;
-            let b_radius = ((b.range.min + b.range.max) * 0.5) as f64;
+            // Use average of min/max for deterministic radius, apply range_scale
+            let a_radius = ((a.range.min + a.range.max) * 0.5) as f64 * range_scale;
+            let b_radius = ((b.range.min + b.range.max) * 0.5) as f64 * range_scale;
 
             // Vector from a to b
             let ab = Point3::new(

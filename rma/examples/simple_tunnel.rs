@@ -43,6 +43,44 @@ fn make_line(points: Vec<FRoomLinePoint>) -> URoomFeature {
     }
 }
 
+fn make_pillar_point(x: f32, y: f32, z: f32, radius: f32, skew: f32) -> FRandLinePoint {
+    FRandLinePoint {
+        location: FVector { x, y, z },
+        range: FRandRange {
+            min: radius,
+            max: radius,
+        },
+        noise_range: FRandRange { min: 0.0, max: 0.0 },
+        skew_factor: FRandRange {
+            min: skew,
+            max: skew,
+        },
+        fill_amount: FRandRange {
+            min: 100.0,
+            max: 100.0,
+        },
+    }
+}
+
+fn make_pillar(points: Vec<FRandLinePoint>, range_scale: f32, endcap_scale: f32) -> URoomFeature {
+    URoomFeature {
+        children: vec![],
+        feature_type: URoomFeatureType::FloodFillPillar(UFloodFillPillar {
+            noise_override: None,
+            points,
+            range_scale: FRandRange {
+                min: range_scale,
+                max: range_scale,
+            },
+            noise_range_scale: FRandRange { min: 1.0, max: 1.0 },
+            endcap_scale: FRandRange {
+                min: endcap_scale,
+                max: endcap_scale,
+            },
+        }),
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let output_path = std::env::args()
         .nth(1)
@@ -111,6 +149,95 @@ fn main() -> anyhow::Result<()> {
             make_point(17000.0, y, 2000.0, 1000.0, 1000.0, 0.0, fa_end),
         ]));
     }
+
+    // ==========================================================================
+    // Row 5 (X=20000): Pillar skew_factor tests
+    // ==========================================================================
+    // Large room to contain the pillars
+    room_features.push(make_line(vec![
+        make_point(20000.0, 0.0, 1500.0, 2000.0, 1500.0, -1500.0, 0.0),
+        make_point(20000.0, 24000.0, 1500.0, 2000.0, 1500.0, -1500.0, 0.0),
+    ]));
+
+    // Baseline: skew = 0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 1000.0, 0.0, 300.0, 0.0),
+            make_pillar_point(20000.0, 2500.0, 1500.0, 300.0, 0.0),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // skew = 0.5
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 4000.0, 0.0, 300.0, 0.5),
+            make_pillar_point(20000.0, 5500.0, 1500.0, 300.0, 0.5),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // skew = 1.0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 7000.0, 0.0, 300.0, 1.0),
+            make_pillar_point(20000.0, 8500.0, 1500.0, 300.0, 1.0),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // skew = 2.0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 10000.0, 0.0, 300.0, 2.0),
+            make_pillar_point(20000.0, 11500.0, 1500.0, 300.0, 2.0),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // skew = -1.0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 13000.0, 0.0, 300.0, -1.0),
+            make_pillar_point(20000.0, 14500.0, 1500.0, 300.0, -1.0),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // skew = 100.0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 16000.0, 0.0, 300.0, 100.0),
+            make_pillar_point(20000.0, 17500.0, 1500.0, 300.0, 100.0),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // Opposing skew: bottom=1.0, top=-1.0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 19000.0, 0.0, 300.0, 1.0),
+            make_pillar_point(20000.0, 20500.0, 1500.0, 300.0, -1.0),
+        ],
+        1.0,
+        1.0,
+    ));
+
+    // Opposing skew: bottom=-1.0, top=1.0
+    room_features.push(make_pillar(
+        vec![
+            make_pillar_point(20000.0, 22000.0, 0.0, 300.0, -1.0),
+            make_pillar_point(20000.0, 23500.0, 1500.0, 300.0, 1.0),
+        ],
+        1.0,
+        1.0,
+    ));
 
     let room = URoomGenerator {
         base: URoomGeneratorBase {
