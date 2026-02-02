@@ -3,8 +3,8 @@
 //! This module provides 3D visualization and egui editors for RMA room features.
 
 use three_d::{
-    egui, vec2, vec3, Angle, BoundingBox, CpuMaterial, CpuMesh, Gm, InnerSpace, InstancedMesh,
-    Instances, Mat4, Mesh, Object, PhysicalMaterial, Quat, Radians, Srgba, Vector3,
+    egui, vec2, vec3, Angle, BoundingBox, CpuMaterial, CpuMesh, Gm, InnerSpace, Mat4, Mesh, Object,
+    PhysicalMaterial, Radians, Srgba, Vector3,
 };
 use transform_gizmo_egui::GizmoMode;
 
@@ -50,16 +50,6 @@ impl From<FVector> for Vector3<f32> {
     }
 }
 
-pub fn line_transform(p1: Vector3<f32>, p2: Vector3<f32>) -> Mat4 {
-    Mat4::from_translation(p1)
-        * Into::<Mat4>::into(Quat::from_arc(
-            vec3(1.0, 0.0, 0.0),
-            (p2 - p1).normalize(),
-            None,
-        ))
-        * Mat4::from_nonuniform_scale((p1 - p2).magnitude(), 1.0, 1.0)
-}
-
 /// Build 3D visualization for a room feature
 pub fn build_feature(
     pool: &ObjectPool,
@@ -86,32 +76,36 @@ pub fn build_feature(
 
         RoomFeature::FloodFillPillar(_) => {
             let typed = UFloodFillPillar::from_properties(props).unwrap();
-            let mut transformations = Vec::new();
+            let mut lines = Vec::new();
 
             let points: Vec<FVector> = typed.points().iter().map(|p| p.location()).collect();
+            let color = Srgba::new_opaque(0, 200, 0);
 
             for pair in points.windows(2) {
-                transformations.push(line_transform(pair[0].into(), pair[1].into()));
+                lines.push(DebugLine {
+                    start: pair[0].into(),
+                    end: pair[1].into(),
+                    color,
+                });
             }
 
-            vec![Box::new(Gm::new(
-                InstancedMesh::new(
-                    ctx.context,
-                    &Instances {
-                        transformations,
-                        ..Default::default()
-                    },
-                    &ctx.wireframe_mesh,
-                ),
-                ctx.wireframe_material.clone(),
-            ))]
+            let mut debug_lines = DebugLines::new(ctx.context, 2.);
+            debug_lines.set_lines(lines);
+            vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]
         }
 
         RoomFeature::FloodFillLine(_) => {
             let typed = UFloodFillLine::from_properties(props).unwrap();
-            let mut transformations = Vec::new();
+            let mut lines = Vec::new();
+            let color = Srgba::new_opaque(200, 0, 0);
 
-            let mut add_line = |p1, p2| transformations.push(line_transform(p1, p2));
+            let mut add_line = |p1: Vector3<f32>, p2: Vector3<f32>| {
+                lines.push(DebugLine {
+                    start: p1,
+                    end: p2,
+                    color,
+                });
+            };
 
             // Collect points data
             let points_data: Vec<_> = typed
@@ -121,20 +115,19 @@ pub fn build_feature(
                 .collect();
 
             for pair in points_data.windows(2) {
-                let (loc1, h1, v1) = pair[0];
-                let (loc2, h2, v2) = pair[1];
-                let v1: Vector3<f32> = loc1.into();
-                let v2: Vector3<f32> = loc2.into();
+                let (loc1, h1, _v1) = pair[0];
+                let (loc2, h2, _v2) = pair[1];
+                let p1: Vector3<f32> = loc1.into();
+                let p2: Vector3<f32> = loc2.into();
 
-                let d = v1.truncate() - v2.truncate();
-                let d = d / d.magnitude();
+                let d = (p1.truncate() - p2.truncate()).normalize();
                 let d = vec2(-d.y, d.x);
 
                 let o1 = (h1 * d).extend(0.);
                 let o2 = (h2 * d).extend(0.);
-                add_line(v1 + o1, v2 + o2);
-                add_line(v1 - o1, v2 - o2);
-                add_line(v1 + vec3(0., 0., v1.z), v2 + vec3(0., 0., v2.z));
+                add_line(p1 + o1, p2 + o2);
+                add_line(p1 - o1, p2 - o2);
+                add_line(p1 + vec3(0., 0., p1.z), p2 + vec3(0., 0., p2.z));
             }
 
             // horizontal perimeter circle
@@ -199,17 +192,9 @@ pub fn build_feature(
                 }
             }
 
-            vec![Box::new(Gm::new(
-                InstancedMesh::new(
-                    ctx.context,
-                    &Instances {
-                        transformations,
-                        ..Default::default()
-                    },
-                    &ctx.wireframe_mesh,
-                ),
-                ctx.wireframe_material.clone(),
-            ))]
+            let mut debug_lines = DebugLines::new(ctx.context, 2.);
+            debug_lines.set_lines(lines);
+            vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]
         }
 
         RoomFeature::EntranceFeature(_) => {
@@ -601,7 +586,7 @@ pub fn build_grid_planes(ctx: &RMAContext, bounds: &Aabb) -> Vec<Box<dyn Object>
         t += grid_spacing;
     }
 
-    let mut debug_lines = DebugLines::new(ctx.context, 1.0);
+    let mut debug_lines = DebugLines::new(ctx.context, 2.5);
     debug_lines.set_lines(lines);
 
     vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]

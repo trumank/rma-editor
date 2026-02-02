@@ -24,7 +24,8 @@ pub struct DebugLines {
     thickness: f32,
     // GPU buffers
     positions: VertexBuffer<Vec3>,
-    line_endpoints: VertexBuffer<Vec3>, // The "other" endpoint for each vertex
+    line_starts: VertexBuffer<Vec3>,
+    line_ends: VertexBuffer<Vec3>,
     vertex_offsets: VertexBuffer<Vec2>, // Which corner of the quad (-1/-1, 1/-1, etc)
     colors: VertexBuffer<Vec4>,
     indices: ElementBuffer<u32>,
@@ -40,7 +41,8 @@ impl DebugLines {
             context: context.clone(),
             thickness,
             positions: VertexBuffer::new(context),
-            line_endpoints: VertexBuffer::new(context),
+            line_starts: VertexBuffer::new(context),
+            line_ends: VertexBuffer::new(context),
             vertex_offsets: VertexBuffer::new(context),
             colors: VertexBuffer::new(context),
             indices: ElementBuffer::new(context),
@@ -67,7 +69,8 @@ impl DebugLines {
         let num_indices = num_lines * 6; // 6 indices per line (2 triangles)
 
         let mut positions = Vec::with_capacity(num_vertices);
-        let mut line_endpoints = Vec::with_capacity(num_vertices);
+        let mut line_starts = Vec::with_capacity(num_vertices);
+        let mut line_ends = Vec::with_capacity(num_vertices);
         let mut vertex_offsets = Vec::with_capacity(num_vertices);
         let mut colors = Vec::with_capacity(num_vertices);
         let mut indices = Vec::with_capacity(num_indices);
@@ -97,25 +100,27 @@ impl DebugLines {
             // Vertex 2: at end, offset +1 (right side)
             // Vertex 3: at end, offset -1 (left side)
 
+            // All vertices get the same line start/end for consistent direction calculation
+            for _ in 0..4 {
+                line_starts.push(line.start);
+                line_ends.push(line.end);
+            }
+
             // Vertices at start point
             positions.push(line.start);
-            line_endpoints.push(line.end);
             vertex_offsets.push(vec2(0.0, -1.0)); // start, left
             colors.push(color);
 
             positions.push(line.start);
-            line_endpoints.push(line.end);
             vertex_offsets.push(vec2(0.0, 1.0)); // start, right
             colors.push(color);
 
             // Vertices at end point
             positions.push(line.end);
-            line_endpoints.push(line.start);
             vertex_offsets.push(vec2(1.0, 1.0)); // end, right
             colors.push(color);
 
             positions.push(line.end);
-            line_endpoints.push(line.start);
             vertex_offsets.push(vec2(1.0, -1.0)); // end, left
             colors.push(color);
 
@@ -129,7 +134,8 @@ impl DebugLines {
         }
 
         self.positions.fill(&positions);
-        self.line_endpoints.fill(&line_endpoints);
+        self.line_starts.fill(&line_starts);
+        self.line_ends.fill(&line_ends);
         self.vertex_offsets.fill(&vertex_offsets);
         self.colors.fill(&colors);
         self.indices.fill(&indices);
@@ -144,23 +150,27 @@ uniform vec2 viewportSize;
 uniform float lineThickness;
 
 in vec3 position;      // This vertex's position (start or end of line)
-in vec3 lineEndpoint;  // The other endpoint of the line
+in vec3 lineStart;     // Line start point (same for all 4 vertices of a line)
+in vec3 lineEnd;       // Line end point (same for all 4 vertices of a line)
 in vec2 vertexOffset;  // x: 0=start, 1=end; y: -1=left, +1=right
 in vec4 color;
 
 out vec4 col;
+out float pixelDistFromCenter; // Distance from line center in pixels
+out float halfLineThickness;   // Half the desired line thickness in pixels
 
 void main() {
-    // Project both endpoints to clip space
+    // Project both endpoints to clip space (consistent for all vertices)
     vec4 clipPos = viewProjection * vec4(position, 1.0);
-    vec4 clipEnd = viewProjection * vec4(lineEndpoint, 1.0);
+    vec4 clipStart = viewProjection * vec4(lineStart, 1.0);
+    vec4 clipEnd = viewProjection * vec4(lineEnd, 1.0);
 
     // Convert to NDC
-    vec2 ndcPos = clipPos.xy / clipPos.w;
+    vec2 ndcStart = clipStart.xy / clipStart.w;
     vec2 ndcEnd = clipEnd.xy / clipEnd.w;
 
-    // Compute line direction in screen space
-    vec2 lineDir = ndcEnd - ndcPos;
+    // Compute line direction in screen space (consistent for all vertices)
+    vec2 lineDir = ndcEnd - ndcStart;
 
     // Handle degenerate lines (zero length)
     float len = length(lineDir);
@@ -173,9 +183,17 @@ void main() {
     // Perpendicular direction
     vec2 perpDir = vec2(-lineDir.y, lineDir.x);
 
+    // Distance-based thickness scaling to prevent blob effect when zoomed out
+    // Use clip.w as a proxy for distance (larger w = farther away)
+    float distanceFactor = clamp(10000.0 / clipPos.w, 0.3, 1.0);
+    float desiredThickness = lineThickness * distanceFactor;
+
+    // Always render quad with 2 pixel padding for AA
+    float quadHalfThickness = desiredThickness * 0.5 + 2.0;
+
     // Offset in NDC space: thickness in pixels -> NDC
     // NDC range is -1 to 1, so 2 units = viewportSize pixels
-    vec2 offset = perpDir * vertexOffset.y * lineThickness / viewportSize;
+    vec2 offset = perpDir * vertexOffset.y * quadHalfThickness * 2.0 / viewportSize;
 
     // Apply offset to the clip-space position
     vec4 finalClipPos = clipPos;
@@ -183,6 +201,9 @@ void main() {
 
     gl_Position = finalClipPos;
     col = color;
+    // Pass actual pixel distance from center (vertexOffset.y is -1 to +1)
+    pixelDistFromCenter = vertexOffset.y * quadHalfThickness;
+    halfLineThickness = desiredThickness * 0.5;
 }
 "#
         .to_string()
@@ -207,7 +228,8 @@ impl Geometry for DebugLines {
 
         // Bind vertex attributes
         program.use_vertex_attribute("position", &self.positions);
-        program.use_vertex_attribute("lineEndpoint", &self.line_endpoints);
+        program.use_vertex_attribute("lineStart", &self.line_starts);
+        program.use_vertex_attribute("lineEnd", &self.line_ends);
         program.use_vertex_attribute("vertexOffset", &self.vertex_offsets);
         program.use_vertex_attribute("color", &self.colors);
 
@@ -272,9 +294,12 @@ pub struct DebugLineMaterial {
 
 impl DebugLineMaterial {
     pub fn new() -> Self {
+        use three_d::{Blend, WriteMask};
         Self {
             render_states: RenderStates {
                 depth_test: DepthTest::LessOrEqual,
+                write_mask: WriteMask::COLOR_AND_DEPTH,
+                blend: Blend::TRANSPARENCY,
                 ..Default::default()
             },
         }
@@ -290,10 +315,21 @@ impl Material for DebugLineMaterial {
     fn fragment_shader_source(&self, _lights: &[&dyn Light]) -> String {
         r#"
 in vec4 col;
+in float pixelDistFromCenter;
+in float halfLineThickness;
 layout (location = 0) out vec4 outColor;
 
 void main() {
-    outColor = col;
+    // pixelDistFromCenter is the actual pixel distance from line center
+    float dist = abs(pixelDistFromCenter);
+
+    // Smooth falloff: fully opaque within line, 1.5 pixel AA band outside
+    float alpha = 1.0 - smoothstep(halfLineThickness - 0.75, halfLineThickness + 0.75, dist);
+
+    // Discard nearly transparent pixels to prevent depth artifacts
+    if (alpha < 0.1) discard;
+
+    outColor = vec4(col.rgb, col.a * alpha);
 }
 "#
         .to_string()
@@ -308,6 +344,6 @@ void main() {
     }
 
     fn material_type(&self) -> MaterialType {
-        MaterialType::Opaque
+        MaterialType::Transparent
     }
 }
