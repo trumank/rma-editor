@@ -3061,6 +3061,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "asset_ser",
+ "clap",
  "csgrs",
  "egui_extras",
  "enumset",
@@ -3069,6 +3070,7 @@ dependencies = [
  "log",
  "ordered-float 4.6.0",
  "serde",
+ "serde_json",
  "strum 0.26.3",
  "three-d",
  "transform-gizmo-egui",

@@ -1,0 +1,3898 @@
+{
+  "metadata": {
+    "tool": "https://github.com/trumank/jmap",
+    "timestamp": "2025-11-08 0:08:34.042336533 +00:00:00",
+    "source": "FSD-Win64-Shipping.DMP",
+    "engine_version": {
+      "major": 4,
+      "minor": 27
+    },
+    "build_change_list": "main-CL-112929"
+  },
+  "image_base_address": "0x7ff726e90000",
+  "objects": {
+    "/Script/CoreUObject.Class": {
+      "type": "Class",
+      "address": "0x289e10bf940",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Struct",
+      "properties": [],
+      "properties_size": 560,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic",
+      "class_cast_flags": "CASTCLASS_UField | CASTCLASS_UStruct | CASTCLASS_UClass",
+      "class_default_object": "/Script/CoreUObject.Default__Class",
+      "instance_vtable": "0x7ff72bed3728"
+    },
+    "/Script/CoreUObject.Color": {
+      "type": "ScriptStruct",
+      "address": "0x289e5070a00",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9040180",
+          "name": "B",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": null,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040200",
+          "name": "G",
+          "offset": 1,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": null,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040280",
+          "name": "R",
+          "offset": 2,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": null,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040300",
+          "name": "A",
+          "offset": 3,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": null,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 4,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_Atomic | STRUCT_Immutable | STRUCT_SerializeNative | STRUCT_IsPlainOldData | STRUCT_NoDestructor | STRUCT_ZeroConstructor"
+    },
+    "/Script/CoreUObject.Enum": {
+      "type": "Class",
+      "address": "0x289e127bec0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Field",
+      "properties": [],
+      "properties_size": 96,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic",
+      "class_cast_flags": "CASTCLASS_UField | CASTCLASS_UEnum",
+      "class_default_object": "/Script/CoreUObject.Default__Enum",
+      "instance_vtable": "0x7ff72bed7bc0"
+    },
+    "/Script/CoreUObject.Field": {
+      "type": "Class",
+      "address": "0x289e10bf4c0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Object",
+      "properties": [],
+      "properties_size": 48,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic",
+      "class_cast_flags": "CASTCLASS_UField",
+      "class_default_object": "/Script/CoreUObject.Default__Field",
+      "instance_vtable": "0x7ff72bed2818"
+    },
+    "/Script/CoreUObject.Guid": {
+      "type": "ScriptStruct",
+      "address": "0x289e500bb00",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289e0d3fc80",
+          "name": "A",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289e0d3fd00",
+          "name": "B",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289e0d3fd80",
+          "name": "C",
+          "offset": 8,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289e0d3fe00",
+          "name": "D",
+          "offset": 12,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 16,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_Atomic | STRUCT_Immutable | STRUCT_SerializeNative | STRUCT_IsPlainOldData | STRUCT_NoDestructor | STRUCT_ZeroConstructor | STRUCT_ExportTextItemNative | STRUCT_ImportTextItemNative"
+    },
+    "/Script/CoreUObject.IntPoint": {
+      "type": "ScriptStruct",
+      "address": "0x289e5070ac0",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9040500",
+          "name": "X",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040580",
+          "name": "Y",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 8,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_Atomic | STRUCT_Immutable | STRUCT_SerializeNative | STRUCT_IsPlainOldData | STRUCT_NoDestructor | STRUCT_ZeroConstructor"
+    },
+    "/Script/CoreUObject.Object": {
+      "type": "Class",
+      "address": "0x289ddbb1f00",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/CoreUObject.Object:ExecuteUbergraph"
+      ],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [],
+      "properties_size": 40,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_MatchedSerializers | CLASS_Native | CLASS_NoExport | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/CoreUObject.Default__Object",
+      "instance_vtable": "0x7ff72b3aa158"
+    },
+    "/Script/CoreUObject.Quat": {
+      "type": "ScriptStruct",
+      "address": "0x289e5008740",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9040a00",
+          "name": "X",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040a80",
+          "name": "Y",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040b00",
+          "name": "Z",
+          "offset": 8,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040b80",
+          "name": "W",
+          "offset": 12,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 16,
+      "min_alignment": 16,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_Atomic | STRUCT_Immutable | STRUCT_NetSerializeNative | STRUCT_IsPlainOldData | STRUCT_NoDestructor | STRUCT_NetSharedSerialization"
+    },
+    "/Script/CoreUObject.Rotator": {
+      "type": "ScriptStruct",
+      "address": "0x289e50085c0",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9040c00",
+          "name": "Pitch",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040c80",
+          "name": "Yaw",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9040d00",
+          "name": "Roll",
+          "offset": 8,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 12,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_Atomic | STRUCT_Immutable | STRUCT_NetSerializeNative | STRUCT_SerializeNative | STRUCT_IsPlainOldData | STRUCT_NoDestructor | STRUCT_ZeroConstructor | STRUCT_NetSharedSerialization"
+    },
+    "/Script/CoreUObject.ScriptStruct": {
+      "type": "Class",
+      "address": "0x289e127cc40",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Struct",
+      "properties": [],
+      "properties_size": 192,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic",
+      "class_cast_flags": "CASTCLASS_UField | CASTCLASS_UStruct | CASTCLASS_UScriptStruct",
+      "class_default_object": "/Script/CoreUObject.Default__ScriptStruct",
+      "instance_vtable": "0x7ff72bed2db0"
+    },
+    "/Script/CoreUObject.Struct": {
+      "type": "Class",
+      "address": "0x289e10bf700",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Field",
+      "properties": [],
+      "properties_size": 176,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic",
+      "class_cast_flags": "CASTCLASS_UField | CASTCLASS_UStruct",
+      "class_default_object": "/Script/CoreUObject.Default__Struct",
+      "instance_vtable": "0x7ff72bed2a98"
+    },
+    "/Script/CoreUObject.Transform": {
+      "type": "ScriptStruct",
+      "address": "0x289e5076b80",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9043f00",
+          "name": "Rotation",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Quat",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9043f80",
+          "name": "Translation",
+          "offset": 16,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9044000",
+          "name": "Scale3D",
+          "offset": 32,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 48,
+      "min_alignment": 16,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_IsPlainOldData | STRUCT_NoDestructor"
+    },
+    "/Script/CoreUObject.Vector": {
+      "type": "ScriptStruct",
+      "address": "0x289e500ba40",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/CoreUObject",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289e0d3fb00",
+          "name": "X",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289e0d3fb80",
+          "name": "Y",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289e0d3fc00",
+          "name": "Z",
+          "offset": 8,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 12,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_NoExport | STRUCT_Atomic | STRUCT_Immutable | STRUCT_NetSerializeNative | STRUCT_SerializeNative | STRUCT_IsPlainOldData | STRUCT_NoDestructor | STRUCT_ZeroConstructor | STRUCT_NetSharedSerialization"
+    },
+    "/Script/Engine.AssetUserData": {
+      "type": "Class",
+      "address": "0x289e10e8f80",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Object",
+      "properties": [],
+      "properties_size": 40,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_RequiredAPI | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/Engine.Default__AssetUserData",
+      "instance_vtable": "0x7ff72c38a138"
+    },
+    "/Script/Engine.DataAsset": {
+      "type": "Class",
+      "address": "0x289e10f0400",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Object",
+      "properties": [
+        {
+          "address": "0x289ecf93080",
+          "name": "NativeClass",
+          "offset": 40,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ClassProperty",
+          "property_class": "/Script/CoreUObject.Class",
+          "meta_class": "/Script/Engine.DataAsset",
+          "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_UObjectWrapper | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        }
+      ],
+      "properties_size": 48,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_MatchedSerializers | CLASS_Native | CLASS_MinimalAPI | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/Engine.Default__DataAsset",
+      "instance_vtable": "0x7ff72b4014a0"
+    },
+    "/Script/Engine.ETextureDownscaleOptions": {
+      "type": "Enum",
+      "address": "0x289f9590460",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "ETextureDownscaleOptions",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "ETextureDownscaleOptions::Default",
+          0
+        ],
+        [
+          "ETextureDownscaleOptions::Unfiltered",
+          1
+        ],
+        [
+          "ETextureDownscaleOptions::SimpleAverage",
+          2
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen0",
+          3
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen1",
+          4
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen2",
+          5
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen3",
+          6
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen4",
+          7
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen5",
+          8
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen6",
+          9
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen7",
+          10
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen8",
+          11
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen9",
+          12
+        ],
+        [
+          "ETextureDownscaleOptions::Sharpen10",
+          13
+        ],
+        [
+          "ETextureDownscaleOptions::ETextureDownscaleOptions_MAX",
+          14
+        ]
+      ]
+    },
+    "/Script/Engine.ETextureMipLoadOptions": {
+      "type": "Enum",
+      "address": "0x289f9590400",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "ETextureMipLoadOptions",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "ETextureMipLoadOptions::Default",
+          0
+        ],
+        [
+          "ETextureMipLoadOptions::AllMips",
+          1
+        ],
+        [
+          "ETextureMipLoadOptions::OnlyFirstMip",
+          2
+        ],
+        [
+          "ETextureMipLoadOptions::ETextureMipLoadOptions_MAX",
+          3
+        ]
+      ]
+    },
+    "/Script/Engine.PerPlatformFloat": {
+      "type": "ScriptStruct",
+      "address": "0x289f96b79c0",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f96cd500",
+          "name": "Default",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 4,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_RequiredAPI | STRUCT_SerializeNative | STRUCT_CopyNative | STRUCT_SerializeFromMismatchedTag"
+    },
+    "/Script/Engine.StreamableRenderAsset": {
+      "type": "Class",
+      "address": "0x289e128ba40",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Object",
+      "properties": [
+        {
+          "address": "0x289faf7cd00",
+          "name": "ForceMipLevelsToBeResidentTimestamp",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "DoubleProperty",
+          "flags": "CPF_ZeroConstructor | CPF_Transient | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faf7cd80",
+          "name": "NumCinematicMipLevels",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7ce00",
+          "name": "StreamingIndex",
+          "offset": 76,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_ZeroConstructor | CPF_Transient | CPF_DuplicateTransient | CPF_IsPlainOldData | CPF_NonTransactional | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faf7ce80",
+          "name": "CachedCombinedLODBias",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_ZeroConstructor | CPF_Transient | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faf7cf00",
+          "name": "NeverStream",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 1,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7cf80",
+          "name": "bGlobalForceMipLevelsToBeResident",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 2,
+          "field_mask": 2,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_NoDestructor | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7d000",
+          "name": "bHasStreamingUpdatePending",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 4,
+          "field_mask": 4,
+          "flags": "CPF_Transient | CPF_NonTransactional | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7d080",
+          "name": "bForceMiplevelsToBeResident",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 8,
+          "field_mask": 8,
+          "flags": "CPF_Transient | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7d100",
+          "name": "bIgnoreStreamingMipBias",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 16,
+          "field_mask": 16,
+          "flags": "CPF_Transient | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7d180",
+          "name": "bUseCinematicMipLevels",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 32,
+          "field_mask": 32,
+          "flags": "CPF_Transient | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 96,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_MatchedSerializers | CLASS_Native | CLASS_MinimalAPI | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/Engine.Default__StreamableRenderAsset",
+      "instance_vtable": "0x7ff72c4b84a0"
+    },
+    "/Script/Engine.Texture": {
+      "type": "Class",
+      "address": "0x289e128bc80",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/Engine.StreamableRenderAsset",
+      "properties": [
+        {
+          "address": "0x289faf7e680",
+          "name": "LightingGuid",
+          "offset": 104,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Guid",
+          "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289faf7e700",
+          "name": "LODBias",
+          "offset": 120,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7c680",
+          "name": "CompressionSettings",
+          "offset": 124,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": "/Script/Engine.TextureCompressionSettings",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7c700",
+          "name": "Filter",
+          "offset": 125,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": "/Script/Engine.TextureFilter",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf586c0",
+          "name": "MipLoadOptions",
+          "offset": 126,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289faf7c780",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/Engine.ETextureMipLoadOptions",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7c800",
+          "name": "LODGroup",
+          "offset": 127,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": "/Script/Engine.TextureGroup",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7c880",
+          "name": "Downscale",
+          "offset": 128,
+          "array_dim": 1,
+          "size": 4,
+          "type": "StructProperty",
+          "struct": "/Script/Engine.PerPlatformFloat",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_AdvancedDisplay | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf58760",
+          "name": "DownscaleOptions",
+          "offset": 132,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289faf7c900",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/Engine.ETextureDownscaleOptions",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7c980",
+          "name": "sRGB",
+          "offset": 133,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 1,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7ca00",
+          "name": "bNoTiling",
+          "offset": 133,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 2,
+          "field_mask": 2,
+          "flags": "CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7ca80",
+          "name": "VirtualTextureStreaming",
+          "offset": 133,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 4,
+          "field_mask": 4,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7cb00",
+          "name": "CompressionYCoCg",
+          "offset": 133,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 8,
+          "field_mask": 8,
+          "flags": "CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7cb80",
+          "name": "bNotOfflineProcessed",
+          "offset": 133,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 16,
+          "field_mask": 16,
+          "flags": "CPF_Transient | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faf7cc00",
+          "name": "bAsyncResourceReleaseHasBeenStarted",
+          "offset": 133,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 32,
+          "field_mask": 32,
+          "flags": "CPF_Transient | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289faf58800",
+          "name": "AssetUserData",
+          "offset": 136,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289faf7cc80",
+            "name": "AssetUserData",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "ObjectProperty",
+            "property_class": "/Script/Engine.AssetUserData",
+            "flags": "CPF_ExportObject | CPF_ZeroConstructor | CPF_InstancedReference | CPF_IsPlainOldData | CPF_NoDestructor | CPF_PersistentInstance | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_ExportObject | CPF_ZeroConstructor | CPF_ContainsInstancedReference | CPF_AdvancedDisplay | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 384,
+      "min_alignment": 16,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_MatchedSerializers | CLASS_Native | CLASS_MinimalAPI | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/Engine.Default__Texture",
+      "instance_vtable": "0x7ff72c4bd218"
+    },
+    "/Script/Engine.Texture2D": {
+      "type": "Class",
+      "address": "0x289e12ee500",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/Engine.Texture2D:Blueprint_GetSizeX",
+        "/Script/Engine.Texture2D:Blueprint_GetSizeY"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/Engine.Texture",
+      "properties": [
+        {
+          "address": "0x289fb0dc000",
+          "name": "LevelIndex",
+          "offset": 376,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_ZeroConstructor | CPF_Transient | CPF_DuplicateTransient | CPF_IsPlainOldData | CPF_NonTransactional | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fb0dc080",
+          "name": "FirstResourceMemMip",
+          "offset": 380,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fb0dc100",
+          "name": "bTemporarilyDisableStreaming",
+          "offset": 384,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 1,
+          "flags": "CPF_Transient | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289fb0dc180",
+          "name": "AddressX",
+          "offset": 385,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": "/Script/Engine.TextureAddress",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fb0dc200",
+          "name": "AddressY",
+          "offset": 386,
+          "array_dim": 1,
+          "size": 1,
+          "type": "ByteProperty",
+          "enum": "/Script/Engine.TextureAddress",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AssetRegistrySearchable | CPF_AdvancedDisplay | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fb0dc280",
+          "name": "ImportedSize",
+          "offset": 388,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.IntPoint",
+          "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        }
+      ],
+      "properties_size": 416,
+      "min_alignment": 16,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_MinimalAPI | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/Engine.Default__Texture2D",
+      "instance_vtable": "0x7ff72c4bd5e8"
+    },
+    "/Script/Engine.TextureAddress": {
+      "type": "Enum",
+      "address": "0x289f9590640",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "TextureAddress",
+      "enum_flags": "",
+      "cpp_form": "Regular",
+      "names": [
+        [
+          "TA_Wrap",
+          0
+        ],
+        [
+          "TA_Clamp",
+          1
+        ],
+        [
+          "TA_Mirror",
+          2
+        ],
+        [
+          "TA_MAX",
+          3
+        ]
+      ]
+    },
+    "/Script/Engine.TextureCompressionSettings": {
+      "type": "Enum",
+      "address": "0x289f9590520",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "TextureCompressionSettings",
+      "enum_flags": "",
+      "cpp_form": "Regular",
+      "names": [
+        [
+          "TC_Default",
+          0
+        ],
+        [
+          "TC_Normalmap",
+          1
+        ],
+        [
+          "TC_Masks",
+          2
+        ],
+        [
+          "TC_Grayscale",
+          3
+        ],
+        [
+          "TC_Displacementmap",
+          4
+        ],
+        [
+          "TC_VectorDisplacementmap",
+          5
+        ],
+        [
+          "TC_HDR",
+          6
+        ],
+        [
+          "TC_EditorIcon",
+          7
+        ],
+        [
+          "TC_Alpha",
+          8
+        ],
+        [
+          "TC_DistanceFieldFont",
+          9
+        ],
+        [
+          "TC_HDR_Compressed",
+          10
+        ],
+        [
+          "TC_BC7",
+          11
+        ],
+        [
+          "TC_HalfFloat",
+          12
+        ],
+        [
+          "TC_EncodedReflectionCapture",
+          13
+        ],
+        [
+          "TC_MAX",
+          14
+        ]
+      ]
+    },
+    "/Script/Engine.TextureFilter": {
+      "type": "Enum",
+      "address": "0x289f9590580",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "TextureFilter",
+      "enum_flags": "",
+      "cpp_form": "Regular",
+      "names": [
+        [
+          "TF_Nearest",
+          0
+        ],
+        [
+          "TF_Bilinear",
+          1
+        ],
+        [
+          "TF_Trilinear",
+          2
+        ],
+        [
+          "TF_Default",
+          3
+        ],
+        [
+          "TF_MAX",
+          4
+        ]
+      ]
+    },
+    "/Script/Engine.TextureGroup": {
+      "type": "Enum",
+      "address": "0x289f9590280",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/Engine",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "TextureGroup",
+      "enum_flags": "",
+      "cpp_form": "Regular",
+      "names": [
+        [
+          "TEXTUREGROUP_World",
+          0
+        ],
+        [
+          "TEXTUREGROUP_WorldNormalMap",
+          1
+        ],
+        [
+          "TEXTUREGROUP_WorldSpecular",
+          2
+        ],
+        [
+          "TEXTUREGROUP_Character",
+          3
+        ],
+        [
+          "TEXTUREGROUP_CharacterNormalMap",
+          4
+        ],
+        [
+          "TEXTUREGROUP_CharacterSpecular",
+          5
+        ],
+        [
+          "TEXTUREGROUP_Weapon",
+          6
+        ],
+        [
+          "TEXTUREGROUP_WeaponNormalMap",
+          7
+        ],
+        [
+          "TEXTUREGROUP_WeaponSpecular",
+          8
+        ],
+        [
+          "TEXTUREGROUP_Vehicle",
+          9
+        ],
+        [
+          "TEXTUREGROUP_VehicleNormalMap",
+          10
+        ],
+        [
+          "TEXTUREGROUP_VehicleSpecular",
+          11
+        ],
+        [
+          "TEXTUREGROUP_Cinematic",
+          12
+        ],
+        [
+          "TEXTUREGROUP_Effects",
+          13
+        ],
+        [
+          "TEXTUREGROUP_EffectsNotFiltered",
+          14
+        ],
+        [
+          "TEXTUREGROUP_Skybox",
+          15
+        ],
+        [
+          "TEXTUREGROUP_UI",
+          16
+        ],
+        [
+          "TEXTUREGROUP_Lightmap",
+          17
+        ],
+        [
+          "TEXTUREGROUP_RenderTarget",
+          18
+        ],
+        [
+          "TEXTUREGROUP_MobileFlattened",
+          19
+        ],
+        [
+          "TEXTUREGROUP_ProcBuilding_Face",
+          20
+        ],
+        [
+          "TEXTUREGROUP_ProcBuilding_LightMap",
+          21
+        ],
+        [
+          "TEXTUREGROUP_Shadowmap",
+          22
+        ],
+        [
+          "TEXTUREGROUP_ColorLookupTable",
+          23
+        ],
+        [
+          "TEXTUREGROUP_Terrain_Heightmap",
+          24
+        ],
+        [
+          "TEXTUREGROUP_Terrain_Weightmap",
+          25
+        ],
+        [
+          "TEXTUREGROUP_Bokeh",
+          26
+        ],
+        [
+          "TEXTUREGROUP_IESLightProfile",
+          27
+        ],
+        [
+          "TEXTUREGROUP_Pixels2D",
+          28
+        ],
+        [
+          "TEXTUREGROUP_HierarchicalLOD",
+          29
+        ],
+        [
+          "TEXTUREGROUP_Impostor",
+          30
+        ],
+        [
+          "TEXTUREGROUP_ImpostorNormalDepth",
+          31
+        ],
+        [
+          "TEXTUREGROUP_8BitData",
+          32
+        ],
+        [
+          "TEXTUREGROUP_16BitData",
+          33
+        ],
+        [
+          "TEXTUREGROUP_Project01",
+          34
+        ],
+        [
+          "TEXTUREGROUP_Project02",
+          35
+        ],
+        [
+          "TEXTUREGROUP_Project03",
+          36
+        ],
+        [
+          "TEXTUREGROUP_Project04",
+          37
+        ],
+        [
+          "TEXTUREGROUP_Project05",
+          38
+        ],
+        [
+          "TEXTUREGROUP_Project06",
+          39
+        ],
+        [
+          "TEXTUREGROUP_Project07",
+          40
+        ],
+        [
+          "TEXTUREGROUP_Project08",
+          41
+        ],
+        [
+          "TEXTUREGROUP_Project09",
+          42
+        ],
+        [
+          "TEXTUREGROUP_Project10",
+          43
+        ],
+        [
+          "TEXTUREGROUP_Project11",
+          44
+        ],
+        [
+          "TEXTUREGROUP_Project12",
+          45
+        ],
+        [
+          "TEXTUREGROUP_Project13",
+          46
+        ],
+        [
+          "TEXTUREGROUP_Project14",
+          47
+        ],
+        [
+          "TEXTUREGROUP_Project15",
+          48
+        ],
+        [
+          "TEXTUREGROUP_MAX",
+          49
+        ]
+      ]
+    },
+    "/Script/FSD.BuildRestriction": {
+      "type": "Class",
+      "address": "0x289e11101c0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289faa0e400",
+          "name": "BuildType",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faa0e480",
+          "name": "Platform",
+          "offset": 52,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 56,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__BuildRestriction",
+      "instance_vtable": "0x7ff72ba3c830"
+    },
+    "/Script/FSD.DropPodCalldownLocationFeature": {
+      "type": "Class",
+      "address": "0x289e1246700",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae9b280",
+          "name": "Location",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae74340",
+          "name": "CalldownClass",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ClassProperty",
+          "property_class": "/Script/CoreUObject.Class",
+          "meta_class": "/Script/Engine.Actor",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_UObjectWrapper | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 88,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__DropPodCalldownLocationFeature",
+      "instance_vtable": "0x7ff72bdf55b0"
+    },
+    "/Script/FSD.ECaveEntrancePriority": {
+      "type": "Enum",
+      "address": "0x289f94418a0",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "ECaveEntrancePriority",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "ECaveEntrancePriority::Primary",
+          0
+        ],
+        [
+          "ECaveEntrancePriority::Secondary",
+          1
+        ],
+        [
+          "ECaveEntrancePriority::ECaveEntrancePriority_MAX",
+          2
+        ]
+      ]
+    },
+    "/Script/FSD.ECaveEntranceType": {
+      "type": "Enum",
+      "address": "0x289f94417e0",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "ECaveEntranceType",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "ECaveEntranceType::EntranceAndExit",
+          0
+        ],
+        [
+          "ECaveEntranceType::Entrance",
+          1
+        ],
+        [
+          "ECaveEntranceType::Exit",
+          2
+        ],
+        [
+          "ECaveEntranceType::TreassureRoom",
+          3
+        ],
+        [
+          "ECaveEntranceType::ECaveEntranceType_MAX",
+          4
+        ]
+      ]
+    },
+    "/Script/FSD.EFSDAchievementType": {
+      "type": "Enum",
+      "address": "0x289ecf8e4a0",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "EFSDAchievementType",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "EFSDAchievementType::NoStatUsed",
+          0
+        ],
+        [
+          "EFSDAchievementType::IncrementStatPerCall",
+          1
+        ],
+        [
+          "EFSDAchievementType::SetStatIfHighscore",
+          2
+        ],
+        [
+          "EFSDAchievementType::ForceNewStatEachCall",
+          3
+        ],
+        [
+          "EFSDAchievementType::EFSDAchievementType_MAX",
+          4
+        ]
+      ]
+    },
+    "/Script/FSD.EItemAdjustmentType": {
+      "type": "Enum",
+      "address": "0x289f9440040",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "EItemAdjustmentType",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "EItemAdjustmentType::None",
+          0
+        ],
+        [
+          "EItemAdjustmentType::Cieling",
+          1
+        ],
+        [
+          "EItemAdjustmentType::Wall",
+          2
+        ],
+        [
+          "EItemAdjustmentType::Floor",
+          3
+        ],
+        [
+          "EItemAdjustmentType::EItemAdjustmentType_MAX",
+          4
+        ]
+      ]
+    },
+    "/Script/FSD.EMissionStatType": {
+      "type": "Enum",
+      "address": "0x289ecf8b2c0",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "EMissionStatType",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "EMissionStatType::Float",
+          0
+        ],
+        [
+          "EMissionStatType::Integer",
+          1
+        ],
+        [
+          "EMissionStatType::Time",
+          2
+        ],
+        [
+          "EMissionStatType::Distance",
+          3
+        ],
+        [
+          "EMissionStatType::EMissionStatType_MAX",
+          4
+        ]
+      ]
+    },
+    "/Script/FSD.ERoomMirroringSupport": {
+      "type": "Enum",
+      "address": "0x289f94400a0",
+      "vtable": "0x7ff72bed7bc0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Enum",
+      "children": [],
+      "property_values": {},
+      "cpp_type": "ERoomMirroringSupport",
+      "enum_flags": "",
+      "cpp_form": "EnumClass",
+      "names": [
+        [
+          "ERoomMirroringSupport::NotAllowed",
+          0
+        ],
+        [
+          "ERoomMirroringSupport::MirrorAroundX",
+          1
+        ],
+        [
+          "ERoomMirroringSupport::MirrorAroundY",
+          2
+        ],
+        [
+          "ERoomMirroringSupport::MirrorBoth",
+          3
+        ],
+        [
+          "ERoomMirroringSupport::ERoomMirroringSupport_MAX",
+          4
+        ]
+      ]
+    },
+    "/Script/FSD.EntranceFeature": {
+      "type": "Class",
+      "address": "0x289e12476c0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae99d00",
+          "name": "Location",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99d80",
+          "name": "Direction",
+          "offset": 76,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Rotator",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae745c0",
+          "name": "EntranceType",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289fae99e00",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/FSD.ECaveEntranceType",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae74660",
+          "name": "Priority",
+          "offset": 89,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289fae99e80",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/FSD.ECaveEntrancePriority",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 96,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__EntranceFeature",
+      "instance_vtable": "0x7ff72bdf46b0"
+    },
+    "/Script/FSD.FSDAchievement": {
+      "type": "Class",
+      "address": "0x289e1160d00",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/FSD.FSDAchievement:GetAchievementTargetValue",
+        "/Script/FSD.FSDAchievement:QueryAchievements",
+        "/Script/FSD.FSDAchievement:ResetStatForAchievement",
+        "/Script/FSD.FSDAchievement:SetAchievementProgress",
+        "/Script/FSD.FSDAchievement:SetAchievementProgressForEntireServer"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/FSD.SavableDataAsset",
+      "properties": [
+        {
+          "address": "0x289fabf4b80",
+          "name": "SteamAPIAchievementName",
+          "offset": 136,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StrProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fabf4c00",
+          "name": "SteamAPIStatName",
+          "offset": 152,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StrProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fabf4c80",
+          "name": "XboxAchievementID",
+          "offset": 168,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StrProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fabf4d00",
+          "name": "AchievementTargetValue",
+          "offset": 184,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fab16f00",
+          "name": "AchievementType",
+          "offset": 192,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289fabf4d80",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/FSD.EFSDAchievementType",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 344,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__FSDAchievement",
+      "instance_vtable": "0x7ff72bc72fb8"
+    },
+    "/Script/FSD.FloodFillBox": {
+      "type": "Class",
+      "address": "0x289e1247900",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae99f00",
+          "name": "Noise",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99f80",
+          "name": "Position",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a000",
+          "name": "Extends",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a080",
+          "name": "Rotation",
+          "offset": 96,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Rotator",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a100",
+          "name": "IsCarver",
+          "offset": 108,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a180",
+          "name": "NoiseRange",
+          "offset": 112,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 120,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__FloodFillBox",
+      "instance_vtable": "0x7ff72bdf4430"
+    },
+    "/Script/FSD.FloodFillLine": {
+      "type": "Class",
+      "address": "0x289e1247fc0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae98480",
+          "name": "WallNoiseOverride",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae98500",
+          "name": "CeilingNoiseOverride",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae98580",
+          "name": "FloorNoiseOverride",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae98600",
+          "name": "UseDetailNoise",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae74840",
+          "name": "Points",
+          "offset": 96,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae98680",
+            "name": "Points",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 48,
+            "type": "StructProperty",
+            "struct": "/Script/FSD.RoomLinePoint",
+            "flags": "CPF_EditConst | CPF_NoDestructor"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 112,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__FloodFillLine",
+      "instance_vtable": "0x7ff72bdf3cb0"
+    },
+    "/Script/FSD.FloodFillPillar": {
+      "type": "Class",
+      "address": "0x289e1247d80",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae9a300",
+          "name": "NoiseOverride",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae747a0",
+          "name": "Points",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae9a380",
+            "name": "Points",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 44,
+            "type": "StructProperty",
+            "struct": "/Script/FSD.RandLinePoint",
+            "flags": "CPF_EditConst | CPF_NoDestructor"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a400",
+          "name": "RangeScale",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_EditConst | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a480",
+          "name": "NoiseRangeScale",
+          "offset": 96,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_EditConst | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a500",
+          "name": "EndcapScale",
+          "offset": 104,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_EditConst | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 112,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__FloodFillPillar",
+      "instance_vtable": "0x7ff72bdf3f30"
+    },
+    "/Script/FSD.FloodFillProceduralPillar": {
+      "type": "Class",
+      "address": "0x289e1247b40",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae74700",
+          "name": "Points",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae9a200",
+            "name": "Points",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 12,
+            "type": "StructProperty",
+            "struct": "/Script/CoreUObject.Vector",
+            "flags": "CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9a280",
+          "name": "PillarSettings",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.PillarSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 88,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__FloodFillProceduralPillar",
+      "instance_vtable": "0x7ff72bdf41b0"
+    },
+    "/Script/FSD.FloodFillSettings": {
+      "type": "Class",
+      "address": "0x289e1163340",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289fabf1000",
+          "name": "NoiseSize",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fabf1080",
+          "name": "FreqMultiplier",
+          "offset": 60,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab5f800",
+          "name": "AmplitudeMultiplier",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab5f880",
+          "name": "MinValue",
+          "offset": 68,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab5f900",
+          "name": "MaxValue",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab5f980",
+          "name": "Turbulence",
+          "offset": 76,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab5fa00",
+          "name": "Invert",
+          "offset": 77,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab5fa80",
+          "name": "Octaves",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fab17900",
+          "name": "NoiseLayers",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fab5fb00",
+            "name": "NoiseLayers",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 16,
+            "type": "StructProperty",
+            "struct": "/Script/FSD.LayeredNoise",
+            "flags": "CPF_NoDestructor"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 104,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__FloodFillSettings",
+      "instance_vtable": "0x7ff72bc6c718"
+    },
+    "/Script/FSD.LayeredNoise": {
+      "type": "ScriptStruct",
+      "address": "0x289f96f7000",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9703e00",
+          "name": "Noise",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9703e80",
+          "name": "Scale",
+          "offset": 8,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 16,
+      "min_alignment": 8,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_CopyNative"
+    },
+    "/Script/FSD.MissionStat": {
+      "type": "Class",
+      "address": "0x289e120f280",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/FSD.MissionStat:GetCategoryTitle",
+        "/Script/FSD.MissionStat:GetHighestStatCountAsText",
+        "/Script/FSD.MissionStat:GetIcon",
+        "/Script/FSD.MissionStat:GetLowestStatCountAsText",
+        "/Script/FSD.MissionStat:GetSourceTitle",
+        "/Script/FSD.MissionStat:GetStatCount",
+        "/Script/FSD.MissionStat:GetStatCountAsText",
+        "/Script/FSD.MissionStat:GetStatCountPct",
+        "/Script/FSD.MissionStat:GetStatCountTotal",
+        "/Script/FSD.MissionStat:GetStatCountTotalAsText",
+        "/Script/FSD.MissionStat:GetStatMaxCount",
+        "/Script/FSD.MissionStat:GetStatMinCount",
+        "/Script/FSD.MissionStat:Increment",
+        "/Script/FSD.MissionStat:MissionStatToText",
+        "/Script/FSD.MissionStat:SetStatValue",
+        "/Script/FSD.MissionStat:StatCountChanged__DelegateSignature"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289f9315200",
+          "name": "OnCountChanged",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 16,
+          "type": "MulticastInlineDelegateProperty",
+          "signature_function": "/Script/FSD.MissionStat:StatCountChanged__DelegateSignature",
+          "flags": "CPF_ZeroConstructor | CPF_InstancedReference | CPF_BlueprintAssignable | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9315280",
+          "name": "SavegameID",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Guid",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9313200",
+          "name": "Title",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 24,
+          "type": "TextProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9313280",
+          "name": "Category",
+          "offset": 104,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.MissionStatCategory",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9313300",
+          "name": "StatAchievement",
+          "offset": 112,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FSDAchievement",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9288bc0",
+          "name": "MissionStatType",
+          "offset": 120,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289f9313380",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/FSD.EMissionStatType",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9313400",
+          "name": "DoNotShowInMissionStatView",
+          "offset": 121,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9313480",
+          "name": "ShowAllValuesCombined",
+          "offset": 122,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f9313500",
+          "name": "ShowHighestValue",
+          "offset": 123,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 128,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__MissionStat",
+      "instance_vtable": "0x7ff72baeb480"
+    },
+    "/Script/FSD.MissionStatCategory": {
+      "type": "Class",
+      "address": "0x289e120f4c0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289fadfd880",
+          "name": "Title",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 24,
+          "type": "TextProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fadfd900",
+          "name": "Icon",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/Engine.Texture2D",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 80,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__MissionStatCategory",
+      "instance_vtable": "0x7ff72bd74270"
+    },
+    "/Script/FSD.PillarSegment": {
+      "type": "ScriptStruct",
+      "address": "0x289f96fac00",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9708480",
+          "name": "Scale",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f9708500",
+          "name": "HeightOffset",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 8,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_CopyNative"
+    },
+    "/Script/FSD.PillarSettings": {
+      "type": "Class",
+      "address": "0x289e121b140",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289faddbf00",
+          "name": "PillarSegments",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae34300",
+            "name": "PillarSegments",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "StructProperty",
+            "struct": "/Script/FSD.PillarSegment",
+            "flags": "CPF_NoDestructor"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae34380",
+          "name": "PointRange",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae34400",
+          "name": "PointNoiseRange",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae34480",
+          "name": "PillarRangeScale",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae34500",
+          "name": "PillarNoiseRangeScale",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae34580",
+          "name": "Noise",
+          "offset": 96,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.FloodFillSettings",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 104,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__PillarSettings",
+      "instance_vtable": "0x7ff72bd9b098"
+    },
+    "/Script/FSD.RandLinePoint": {
+      "type": "ScriptStruct",
+      "address": "0x289f96fc100",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f970bc00",
+          "name": "Location",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f970bc80",
+          "name": "range",
+          "offset": 12,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f970bd00",
+          "name": "NoiseRange",
+          "offset": 20,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f970bd80",
+          "name": "SkewFactor",
+          "offset": 28,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f970be00",
+          "name": "FillAmount",
+          "offset": 36,
+          "array_dim": 1,
+          "size": 8,
+          "type": "StructProperty",
+          "struct": "/Script/FSD.RandRange",
+          "flags": "CPF_Edit | CPF_NoDestructor | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 44,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_CopyNative"
+    },
+    "/Script/FSD.RandRange": {
+      "type": "ScriptStruct",
+      "address": "0x289e507af00",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9351080",
+          "name": "Min",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f933f800",
+          "name": "Max",
+          "offset": 4,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 8,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_CopyNative"
+    },
+    "/Script/FSD.RandomSelector": {
+      "type": "Class",
+      "address": "0x289e1248200",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae98700",
+          "name": "Min",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae98780",
+          "name": "Max",
+          "offset": 68,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 72,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__RandomSelector",
+      "instance_vtable": "0x7ff72bdf3a30"
+    },
+    "/Script/FSD.RandomSubRoomFeature": {
+      "type": "Class",
+      "address": "0x289e1246940",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae9b300",
+          "name": "RoomGroup",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.RoomGeneratorGroup",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9b380",
+          "name": "tagQuery",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 72,
+          "type": "StructProperty",
+          "struct": "/Script/GameplayTags.GameplayTagQuery",
+          "flags": "CPF_Edit | CPF_EditConst | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9b400",
+          "name": "Layer",
+          "offset": 144,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9b480",
+          "name": "Location",
+          "offset": 148,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9b500",
+          "name": "Rotation",
+          "offset": 160,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Rotator",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae9b580",
+          "name": "Scale",
+          "offset": 172,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 176,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__RandomSubRoomFeature",
+      "instance_vtable": "0x7ff72bdf5330"
+    },
+    "/Script/FSD.ResourceData": {
+      "type": "Class",
+      "address": "0x289e111de40",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/FSD.ResourceData:GetIsTradableCraftingMaterial",
+        "/Script/FSD.ResourceData:GetOwnedAmount"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289faa25500",
+          "name": "Title",
+          "offset": 56,
+          "array_dim": 1,
+          "size": 24,
+          "type": "TextProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25580",
+          "name": "TitlePlural",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 24,
+          "type": "TextProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25600",
+          "name": "Description",
+          "offset": 104,
+          "array_dim": 1,
+          "size": 24,
+          "type": "TextProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25680",
+          "name": "Color",
+          "offset": 128,
+          "array_dim": 1,
+          "size": 4,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Color",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25700",
+          "name": "Icon",
+          "offset": 136,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/Engine.Texture2D",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25780",
+          "name": "BuyingPrice",
+          "offset": 144,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25800",
+          "name": "SellingPrice",
+          "offset": 148,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25880",
+          "name": "MinedMissionStat",
+          "offset": 152,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.MissionStat",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25900",
+          "name": "IsCraftingMaterial",
+          "offset": 160,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25980",
+          "name": "IsTradable",
+          "offset": 161,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25a00",
+          "name": "ForceShowOnEndScreen",
+          "offset": 162,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25a80",
+          "name": "AffectedByMutators",
+          "offset": 163,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25b00",
+          "name": "ScaleToMissionLength",
+          "offset": 164,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25b80",
+          "name": "AutoDepositOnDisconnect",
+          "offset": 165,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25c00",
+          "name": "ScaleToHazardLevel",
+          "offset": 166,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25c80",
+          "name": "ShowSeparatelyInEndScreen",
+          "offset": 167,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fa99f2e0",
+          "name": "Spawnable",
+          "offset": 168,
+          "array_dim": 1,
+          "size": 40,
+          "type": "SoftClassProperty",
+          "property_class": "/Script/CoreUObject.Class",
+          "meta_class": "/Script/FSD.FSDPhysicsActor",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_UObjectWrapper | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289faa25d00",
+          "name": "IsWholeNumberResource",
+          "offset": 208,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faa25d80",
+          "name": "CreditValue",
+          "offset": 212,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faa25e00",
+          "name": "XPValue",
+          "offset": 216,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faa25e80",
+          "name": "SeasonXPMultiplier",
+          "offset": 220,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289faa25f00",
+          "name": "SavegameID",
+          "offset": 224,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Guid",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 240,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_RequiredAPI | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__ResourceData",
+      "instance_vtable": "0x7ff72bbc2300"
+    },
+    "/Script/FSD.ResourceFeature": {
+      "type": "Class",
+      "address": "0x289e1247480",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae99b80",
+          "name": "Location",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99c00",
+          "name": "Resource",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.ResourceData",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99c80",
+          "name": "BaseAmount",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 96,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__ResourceFeature",
+      "instance_vtable": "0x7ff72bdf4930"
+    },
+    "/Script/FSD.RoomFeature": {
+      "type": "Class",
+      "address": "0x289e1248440",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/CoreUObject.Object",
+      "properties": [
+        {
+          "address": "0x289fae748e0",
+          "name": "RoomFeatures",
+          "offset": 40,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae98800",
+            "name": "RoomFeatures",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "ObjectProperty",
+            "property_class": "/Script/FSD.RoomFeature",
+            "flags": "CPF_ExportObject | CPF_ZeroConstructor | CPF_EditConst | CPF_InstancedReference | CPF_IsPlainOldData | CPF_NoDestructor | CPF_PersistentInstance | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_ExportObject | CPF_ZeroConstructor | CPF_EditConst | CPF_ContainsInstancedReference | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 64,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__RoomFeature",
+      "instance_vtable": "0x7ff72bdf37b0"
+    },
+    "/Script/FSD.RoomGenerator": {
+      "type": "Class",
+      "address": "0x289e1246280",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/FSD.RoomGenerator:GetAllRoomFeatures"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomGeneratorBase",
+      "properties": [
+        {
+          "address": "0x289fae74160",
+          "name": "RoomFeatures",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae9af80",
+            "name": "RoomFeatures",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "ObjectProperty",
+            "property_class": "/Script/FSD.RoomFeature",
+            "flags": "CPF_ExportObject | CPF_ZeroConstructor | CPF_EditConst | CPF_InstancedReference | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_ExportObject | CPF_ZeroConstructor | CPF_EditConst | CPF_ContainsInstancedReference | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 104,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__RoomGenerator",
+      "instance_vtable": "0x7ff72bb5f2a0"
+    },
+    "/Script/FSD.RoomGeneratorBase": {
+      "type": "Class",
+      "address": "0x289e12464c0",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289fae9b080",
+          "name": "Bounds",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae9b100",
+          "name": "CanOnlyBeUsedOnce",
+          "offset": 52,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae742a0",
+          "name": "MirrorSupport",
+          "offset": 53,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289fae9b180",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/FSD.ERoomMirroringSupport",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289fae9b200",
+          "name": "RoomTags",
+          "offset": 56,
+          "array_dim": 1,
+          "size": 32,
+          "type": "StructProperty",
+          "struct": "/Script/GameplayTags.GameplayTagContainer",
+          "flags": "CPF_Edit | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 88,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_Abstract | CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__RoomGeneratorBase",
+      "instance_vtable": "0x7ff72bb5f028"
+    },
+    "/Script/FSD.RoomGeneratorGroup": {
+      "type": "Class",
+      "address": "0x289e1246040",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/FSD.RoomGeneratorGroup:CreateGroupInstance",
+        "/Script/FSD.RoomGeneratorGroup:GetRandomRoom",
+        "/Script/FSD.RoomGeneratorGroup:GetRandomRoomWithTags"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289fae740c0",
+          "name": "Rooms",
+          "offset": 48,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289fae9ab80",
+            "name": "Rooms",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "ObjectProperty",
+            "property_class": "/Script/FSD.RoomGenerator",
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_BlueprintReadOnly | CPF_ZeroConstructor | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 64,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__RoomGeneratorGroup",
+      "instance_vtable": "0x7ff72bb4e360"
+    },
+    "/Script/FSD.RoomLinePoint": {
+      "type": "ScriptStruct",
+      "address": "0x289f96f5d40",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f96ee780",
+          "name": "Location",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96ee800",
+          "name": "HRange",
+          "offset": 12,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96ee880",
+          "name": "VRange",
+          "offset": 16,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96ee900",
+          "name": "CielingNoiseRange",
+          "offset": 20,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96ee980",
+          "name": "WallNoiseRange",
+          "offset": 24,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96eea00",
+          "name": "FloorNoiseRange",
+          "offset": 28,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96eea80",
+          "name": "Cielingheight",
+          "offset": 32,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96eeb00",
+          "name": "HeightScale",
+          "offset": 36,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96eeb80",
+          "name": "FloorDepth",
+          "offset": 40,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        },
+        {
+          "address": "0x289f96eec00",
+          "name": "FloorAngle",
+          "offset": 44,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPublic"
+        }
+      ],
+      "properties_size": 48,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_CopyNative"
+    },
+    "/Script/FSD.SavableDataAsset": {
+      "type": "Class",
+      "address": "0x289e1107d80",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [
+        "/Script/FSD.SavableDataAsset:GetSavegameID"
+      ],
+      "property_values": {},
+      "super_struct": "/Script/Engine.DataAsset",
+      "properties": [
+        {
+          "address": "0x289f92c2600",
+          "name": "EnableDangerousSaveGameIDEditing",
+          "offset": 56,
+          "array_dim": 1,
+          "size": 1,
+          "type": "BoolProperty",
+          "field_size": 1,
+          "byte_offset": 0,
+          "byte_mask": 1,
+          "field_mask": 255,
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_AdvancedDisplay | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f92c2680",
+          "name": "SavegameID",
+          "offset": 60,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Guid",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289f92c2700",
+          "name": "BuildRestriction",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.BuildRestriction",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 88,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_TokenStreamAssembled | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__SavableDataAsset",
+      "instance_vtable": "0x7ff72bab4a58"
+    },
+    "/Script/FSD.SpawnActorFeature": {
+      "type": "Class",
+      "address": "0x289e1247240",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae99880",
+          "name": "Location",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae74480",
+          "name": "ActorToSpawn",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ClassProperty",
+          "property_class": "/Script/CoreUObject.Class",
+          "meta_class": "/Script/Engine.Actor",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_UObjectWrapper | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99900",
+          "name": "AdjustmentDirection",
+          "offset": 88,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae74520",
+          "name": "Adjustment",
+          "offset": 100,
+          "array_dim": 1,
+          "size": 1,
+          "type": "EnumProperty",
+          "container": {
+            "address": "0x289fae99980",
+            "name": "UnderlyingType",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "enum": "/Script/FSD.EItemAdjustmentType",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99a00",
+          "name": "ScaleMin",
+          "offset": 104,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99a80",
+          "name": "ScaleMax",
+          "offset": 116,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99b00",
+          "name": "RotationDelta",
+          "offset": 128,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Rotator",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 144,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__SpawnActorFeature",
+      "instance_vtable": "0x7ff72bdf4bb0"
+    },
+    "/Script/FSD.SpawnTriggerFeature": {
+      "type": "Class",
+      "address": "0x289e1247000",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae743e0",
+          "name": "TriggerClass",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ClassProperty",
+          "property_class": "/Script/CoreUObject.Class",
+          "meta_class": "/Script/Engine.Actor",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_UObjectWrapper | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99780",
+          "name": "Transform",
+          "offset": 80,
+          "array_dim": 1,
+          "size": 48,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Transform",
+          "flags": "CPF_Edit | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99800",
+          "name": "Message",
+          "offset": 128,
+          "array_dim": 1,
+          "size": 8,
+          "type": "NameProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 144,
+      "min_alignment": 16,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__SpawnTriggerFeature",
+      "instance_vtable": "0x7ff72bdf4e30"
+    },
+    "/Script/FSD.SubRoomFeature": {
+      "type": "Class",
+      "address": "0x289e1246b80",
+      "vtable": "0x7ff72bed3728",
+      "object_flags": "RF_Public | RF_Standalone | RF_Transient",
+      "outer": "/Script/FSD",
+      "class": "/Script/CoreUObject.Class",
+      "children": [],
+      "property_values": {},
+      "super_struct": "/Script/FSD.RoomFeature",
+      "properties": [
+        {
+          "address": "0x289fae99500",
+          "name": "RoomGenerator",
+          "offset": 64,
+          "array_dim": 1,
+          "size": 8,
+          "type": "ObjectProperty",
+          "property_class": "/Script/FSD.RoomGenerator",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99580",
+          "name": "Location",
+          "offset": 72,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Vector",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99600",
+          "name": "Rotation",
+          "offset": 84,
+          "array_dim": 1,
+          "size": 12,
+          "type": "StructProperty",
+          "struct": "/Script/CoreUObject.Rotator",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289fae99680",
+          "name": "Scale",
+          "offset": 96,
+          "array_dim": 1,
+          "size": 4,
+          "type": "FloatProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 104,
+      "min_alignment": 8,
+      "script": "",
+      "class_flags": "CLASS_MatchedSerializers | CLASS_Native | CLASS_EditInlineNew | CLASS_DefaultToInstanced | CLASS_TokenStreamAssembled | CLASS_HasInstancedReference | CLASS_Intrinsic | CLASS_Constructed",
+      "class_cast_flags": "",
+      "class_default_object": "/Script/FSD.Default__SubRoomFeature",
+      "instance_vtable": "0x7ff72bdf50b0"
+    },
+    "/Script/GameplayTags.GameplayTag": {
+      "type": "ScriptStruct",
+      "address": "0x289e500a540",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/GameplayTags",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f91a0080",
+          "name": "TagName",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 8,
+          "type": "NameProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_EditConst | CPF_SaveGame | CPF_IsPlainOldData | CPF_NoDestructor | CPF_Protected | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 8,
+      "min_alignment": 4,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_RequiredAPI | STRUCT_NetSerializeNative | STRUCT_CopyNative | STRUCT_ImportTextItemNative | STRUCT_PostSerializeNative | STRUCT_SerializeFromMismatchedTag | STRUCT_NetSharedSerialization"
+    },
+    "/Script/GameplayTags.GameplayTagContainer": {
+      "type": "ScriptStruct",
+      "address": "0x289e500a600",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/GameplayTags",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289ecf92400",
+          "name": "GameplayTags",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289f91a2100",
+            "name": "GameplayTags",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "StructProperty",
+            "struct": "/Script/GameplayTags.GameplayTag",
+            "flags": "CPF_EditConst | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_BlueprintVisible | CPF_ZeroConstructor | CPF_EditConst | CPF_SaveGame | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        },
+        {
+          "address": "0x289ecf924a0",
+          "name": "ParentTags",
+          "offset": 16,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289f91a0100",
+            "name": "ParentTags",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "StructProperty",
+            "struct": "/Script/GameplayTags.GameplayTag",
+            "flags": "CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_ZeroConstructor | CPF_Transient | CPF_Protected | CPF_NativeAccessSpecifierProtected"
+        }
+      ],
+      "properties_size": 32,
+      "min_alignment": 8,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_IdenticalNative | STRUCT_RequiredAPI | STRUCT_NetSerializeNative | STRUCT_SerializeNative | STRUCT_CopyNative | STRUCT_ImportTextItemNative | STRUCT_PostScriptConstruct | STRUCT_NetSharedSerialization"
+    },
+    "/Script/GameplayTags.GameplayTagQuery": {
+      "type": "ScriptStruct",
+      "address": "0x289e507d600",
+      "vtable": "0x7ff72bed2db0",
+      "object_flags": "RF_Public | RF_Transient",
+      "outer": "/Script/GameplayTags",
+      "class": "/Script/CoreUObject.ScriptStruct",
+      "children": [],
+      "property_values": {},
+      "super_struct": null,
+      "properties": [
+        {
+          "address": "0x289f9358780",
+          "name": "TokenStreamVersion",
+          "offset": 0,
+          "array_dim": 1,
+          "size": 4,
+          "type": "IntProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289f928d8a0",
+          "name": "TagDictionary",
+          "offset": 8,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289f9358800",
+            "name": "TagDictionary",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 8,
+            "type": "StructProperty",
+            "struct": "/Script/GameplayTags.GameplayTag",
+            "flags": "CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289f928d940",
+          "name": "QueryTokenStream",
+          "offset": 24,
+          "array_dim": 1,
+          "size": 16,
+          "type": "ArrayProperty",
+          "inner": {
+            "address": "0x289f9358880",
+            "name": "QueryTokenStream",
+            "offset": 0,
+            "array_dim": 1,
+            "size": 1,
+            "type": "ByteProperty",
+            "enum": null,
+            "flags": "CPF_ZeroConstructor | CPF_IsPlainOldData | CPF_NoDestructor | CPF_HasGetValueTypeHash"
+          },
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289f9358900",
+          "name": "UserDescription",
+          "offset": 40,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StrProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        },
+        {
+          "address": "0x289f9358980",
+          "name": "AutoDescription",
+          "offset": 56,
+          "array_dim": 1,
+          "size": 16,
+          "type": "StrProperty",
+          "flags": "CPF_Edit | CPF_ZeroConstructor | CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifierPrivate"
+        }
+      ],
+      "properties_size": 72,
+      "min_alignment": 8,
+      "script": "",
+      "struct_flags": "STRUCT_Native | STRUCT_RequiredAPI | STRUCT_CopyNative"
+    }
+  },
+  "vtables": {},
+  "names": null
+}
