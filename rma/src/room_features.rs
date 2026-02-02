@@ -8,17 +8,9 @@ use three_d::{
 };
 use transform_gizmo_egui::GizmoMode;
 
+use crate::RMAContext;
 use crate::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
-
-use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
-
-use crate::{
-    RMAContext,
-    rma::{
-        FTransform, FVector, RoomFeature, TypedProperties, UDropPodCalldownLocationFeature,
-        UEntranceFeature, UFloodFillBox, UFloodFillLine, UFloodFillPillar, USpawnActorFeature,
-    },
-};
+use crate::objects::*;
 
 // Wireframe visualization constants
 const CIRCLE_SEGMENTS: usize = 40;
@@ -34,32 +26,31 @@ pub type Gizmos<'s> = Vec<(
 
 impl From<FVector> for Vector3<f32> {
     fn from(val: FVector) -> Self {
-        vec3(*val.x, *val.y, *val.z)
+        vec3(val.x, val.y, val.z)
+    }
+}
+
+impl From<&FVector> for Vector3<f32> {
+    fn from(val: &FVector) -> Self {
+        vec3(val.x, val.y, val.z)
     }
 }
 
 /// Build 3D visualization for a room feature
-/// If `highlight_color` is Some, uses that color instead of the default feature color
 pub fn build_feature(
-    pool: &ObjectPool,
-    handle: ObjectHandle,
-    feature: &RoomFeature,
+    feature: &URoomFeature,
     ctx: &RMAContext,
     highlight_color: Option<Srgba>,
 ) -> Vec<Box<dyn Object>> {
-    let obj = pool.get(handle).expect("Invalid handle");
-    let props = obj.properties();
-
-    match feature {
-        RoomFeature::FloodFillBox(_) => {
-            let typed = UFloodFillBox::from_properties(props).unwrap();
-            let position = typed.position();
-            let extends = typed.extends();
+    match &feature.feature_type {
+        URoomFeatureType::FloodFillBox(f) => {
+            let position: Vector3<f32> = (&f.position).into();
+            let extends = &f.extends;
 
             let mut mesh = BoundingBox::new(ctx.context, CpuMesh::cube().compute_aabb());
             mesh.set_transformation(
-                Mat4::from_translation(position.into())
-                    * Mat4::from_nonuniform_scale(*extends.x, *extends.y, *extends.z),
+                Mat4::from_translation(position)
+                    * Mat4::from_nonuniform_scale(extends.x, extends.y, extends.z),
             );
 
             let material = if let Some(color) = highlight_color {
@@ -76,17 +67,16 @@ pub fn build_feature(
             vec![Box::new(Gm::new(mesh, material))]
         }
 
-        RoomFeature::FloodFillPillar(_) => {
-            let typed = UFloodFillPillar::from_properties(props).unwrap();
+        URoomFeatureType::FloodFillPillar(f) => {
             let mut lines = Vec::new();
-
-            let points: Vec<FVector> = typed.points().iter().map(|p| p.location()).collect();
             let color = highlight_color.unwrap_or(Srgba::new_opaque(0, 200, 0));
+
+            let points: Vec<Vector3<f32>> = f.points.iter().map(|p| (&p.location).into()).collect();
 
             for pair in points.windows(2) {
                 lines.push(DebugLine {
-                    start: pair[0].into(),
-                    end: pair[1].into(),
+                    start: pair[0],
+                    end: pair[1],
                     color,
                 });
             }
@@ -96,8 +86,7 @@ pub fn build_feature(
             vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]
         }
 
-        RoomFeature::FloodFillLine(_) => {
-            let typed = UFloodFillLine::from_properties(props).unwrap();
+        URoomFeatureType::FloodFillLine(f) => {
             let mut lines = Vec::new();
             let color = highlight_color.unwrap_or(Srgba::new_opaque(200, 0, 0));
 
@@ -110,18 +99,16 @@ pub fn build_feature(
             };
 
             // Collect points data
-            let points_data: Vec<_> = typed
-                .points()
+            let points_data: Vec<_> = f
+                .points
                 .iter()
-                .map(|p| (p.location(), p.h_range(), p.v_range()))
+                .map(|p| (Vector3::from(&p.location), p.h_range, p.v_range))
                 .collect();
 
             // Connector bands between points at each height level
             for pair in points_data.windows(2) {
-                let (loc1, h1, v1) = pair[0];
-                let (loc2, h2, v2) = pair[1];
-                let p1: Vector3<f32> = loc1.into();
-                let p2: Vector3<f32> = loc2.into();
+                let (p1, h1, v1) = pair[0];
+                let (p2, h2, v2) = pair[1];
 
                 let d = (p1.truncate() - p2.truncate()).normalize();
                 let perp = vec2(-d.y, d.x);
@@ -174,14 +161,14 @@ pub fn build_feature(
                     while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
                         add_line(
                             vec3(
-                                *location.x + h_r * a.0,
-                                *location.y + h_r * a.1,
-                                *location.z + z_off,
+                                location.x + h_r * a.0,
+                                location.y + h_r * a.1,
+                                location.z + z_off,
                             ),
                             vec3(
-                                *location.x + h_r * b.0,
-                                *location.y + h_r * b.1,
-                                *location.z + z_off,
+                                location.x + h_r * b.0,
+                                location.y + h_r * b.1,
+                                location.z + z_off,
                             ),
                         );
                     }
@@ -205,14 +192,14 @@ pub fn build_feature(
                         // Rotate the vertical circle around the Z axis
                         add_line(
                             vec3(
-                                *location.x + h_range * a.0 * rot_cos,
-                                *location.y + h_range * a.0 * rot_sin,
-                                *location.z + v_range * a.1,
+                                location.x + h_range * a.0 * rot_cos,
+                                location.y + h_range * a.0 * rot_sin,
+                                location.z + v_range * a.1,
                             ),
                             vec3(
-                                *location.x + h_range * b.0 * rot_cos,
-                                *location.y + h_range * b.0 * rot_sin,
-                                *location.z + v_range * b.1,
+                                location.x + h_range * b.0 * rot_cos,
+                                location.y + h_range * b.0 * rot_sin,
+                                location.z + v_range * b.1,
                             ),
                         );
                     }
@@ -224,40 +211,32 @@ pub fn build_feature(
             vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]
         }
 
-        RoomFeature::EntranceFeature(_) => {
-            let typed = UEntranceFeature::from_properties(props).unwrap();
-            let location = typed.location();
-            let entrance_type = typed.entrance_type();
+        URoomFeatureType::Entrance(f) => {
+            let location: Vector3<f32> = (&f.location).into();
 
-            let albedo = highlight_color.unwrap_or(match entrance_type {
-                "ECaveEntranceType::EntranceAndExit" => Srgba {
+            let albedo = highlight_color.unwrap_or(match f.entrance_type {
+                ECaveEntranceType::EntranceAndExit => Srgba {
                     r: 0,
                     g: 255,
                     b: 255,
                     a: 200,
                 },
-                "ECaveEntranceType::Entrance" => Srgba {
+                ECaveEntranceType::Entrance => Srgba {
                     r: 255,
                     g: 100,
                     b: 0,
                     a: 200,
                 },
-                "ECaveEntranceType::Exit" => Srgba {
+                ECaveEntranceType::Exit => Srgba {
                     r: 255,
                     g: 0,
                     b: 100,
                     a: 200,
                 },
-                "ECaveEntranceType::TreassureRoom" => Srgba {
+                ECaveEntranceType::TreassureRoom => Srgba {
                     r: 255,
                     g: 200,
                     b: 0,
-                    a: 200,
-                },
-                _ => Srgba {
-                    r: 128,
-                    g: 128,
-                    b: 128,
                     a: 200,
                 },
             });
@@ -272,15 +251,12 @@ pub fn build_feature(
                     },
                 ),
             );
-            sphere.set_transformation(
-                Mat4::from_translation(location.into()) * Mat4::from_scale(100.0),
-            );
+            sphere.set_transformation(Mat4::from_translation(location) * Mat4::from_scale(100.0));
             vec![Box::new(sphere)]
         }
 
-        RoomFeature::SpawnActorFeature(_) => {
-            let typed = USpawnActorFeature::from_properties(props).unwrap();
-            let location = typed.location();
+        URoomFeatureType::SpawnActor(f) => {
+            let location: Vector3<f32> = (&f.location).into();
 
             let albedo = highlight_color.unwrap_or(Srgba {
                 r: 255,
@@ -300,16 +276,15 @@ pub fn build_feature(
                 ),
             );
             obj.set_transformation(
-                Mat4::from_translation(location.into())
+                Mat4::from_translation(location)
                     * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
                     * Mat4::from_angle_y(-Radians::turn_div_4()),
             );
             vec![Box::new(obj)]
         }
 
-        RoomFeature::DropPodCalldownLocationFeature(_) => {
-            let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
-            let location = typed.location();
+        URoomFeatureType::DropPodCalldownLocation(f) => {
+            let location: Vector3<f32> = (&f.location).into();
 
             let albedo = highlight_color.unwrap_or(Srgba {
                 r: 0,
@@ -329,7 +304,7 @@ pub fn build_feature(
                 ),
             );
             obj.set_transformation(
-                Mat4::from_translation(location.into())
+                Mat4::from_translation(location)
                     * Mat4::from_nonuniform_scale(100.0, 100.0, 300.0)
                     * Mat4::from_angle_y(Radians::turn_div_4()),
             );
@@ -340,57 +315,65 @@ pub fn build_feature(
     }
 }
 
+/// Get the display name for a feature type
+pub fn feature_type_name(feature: &URoomFeatureType) -> &'static str {
+    match feature {
+        URoomFeatureType::FloodFillBox(_) => "FloodFillBox",
+        URoomFeatureType::FloodFillLine(_) => "FloodFillLine",
+        URoomFeatureType::FloodFillPillar(_) => "FloodFillPillar",
+        URoomFeatureType::FloodFillProceduralPillar(_) => "FloodFillProceduralPillar",
+        URoomFeatureType::Entrance(_) => "Entrance",
+        URoomFeatureType::RandomSelector(_) => "RandomSelector",
+        URoomFeatureType::RandomSubRoom(_) => "RandomSubRoom",
+        URoomFeatureType::SubRoom(_) => "SubRoom",
+        URoomFeatureType::SpawnActor(_) => "SpawnActor",
+        URoomFeatureType::SpawnTrigger(_) => "SpawnTrigger",
+        URoomFeatureType::Resource(_) => "Resource",
+        URoomFeatureType::DropPodCalldownLocation(_) => "DropPodCalldownLocation",
+    }
+}
+
 /// Build editor UI for a room feature
 pub fn edit_feature<'s>(
-    pool: &'s mut ObjectPool,
-    handle: ObjectHandle,
-    feature: &RoomFeature,
+    feature: &URoomFeature,
     ui: &mut egui::Ui,
     _gizmos: &mut Gizmos<'s>,
 ) -> bool {
-    // For now, just show the feature name
-    // Full editing support requires more work to handle mutable property access
-    ui.label(format!("Feature: {}", feature.name()));
+    ui.label(format!(
+        "Feature: {}",
+        feature_type_name(&feature.feature_type)
+    ));
 
-    let obj = pool.get(handle).expect("Invalid handle");
-    let props = obj.properties();
-
-    match feature {
-        RoomFeature::FloodFillBox(_) => {
-            let typed = UFloodFillBox::from_properties(props).unwrap();
-            ui.label(format!("Position: {:?}", typed.position()));
-            ui.label(format!("Extends: {:?}", typed.extends()));
+    match &feature.feature_type {
+        URoomFeatureType::FloodFillBox(f) => {
+            ui.label(format!("Position: {:?}", f.position));
+            ui.label(format!("Extends: {:?}", f.extends));
             false
         }
 
-        RoomFeature::FloodFillPillar(_) => {
-            let typed = UFloodFillPillar::from_properties(props).unwrap();
-            ui.label(format!("Points: {}", typed.points().len()));
+        URoomFeatureType::FloodFillPillar(f) => {
+            ui.label(format!("Points: {}", f.points.len()));
             false
         }
 
-        RoomFeature::FloodFillLine(_) => {
-            let typed = UFloodFillLine::from_properties(props).unwrap();
-            ui.label(format!("Points: {}", typed.points().len()));
+        URoomFeatureType::FloodFillLine(f) => {
+            ui.label(format!("Points: {}", f.points.len()));
             false
         }
 
-        RoomFeature::EntranceFeature(_) => {
-            let typed = UEntranceFeature::from_properties(props).unwrap();
-            ui.label(format!("Location: {:?}", typed.location()));
-            ui.label(format!("Type: {}", typed.entrance_type()));
+        URoomFeatureType::Entrance(f) => {
+            ui.label(format!("Location: {:?}", f.location));
+            ui.label(format!("Type: {:?}", f.entrance_type));
             false
         }
 
-        RoomFeature::SpawnActorFeature(_) => {
-            let typed = USpawnActorFeature::from_properties(props).unwrap();
-            ui.label(format!("Location: {:?}", typed.location()));
+        URoomFeatureType::SpawnActor(f) => {
+            ui.label(format!("Location: {:?}", f.location));
             false
         }
 
-        RoomFeature::DropPodCalldownLocationFeature(_) => {
-            let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
-            ui.label(format!("Location: {:?}", typed.location()));
+        URoomFeatureType::DropPodCalldownLocation(f) => {
+            ui.label(format!("Location: {:?}", f.location));
             false
         }
 
@@ -455,69 +438,56 @@ impl Default for Aabb {
 }
 
 /// Compute the bounding box of all features in the room
-pub fn compute_room_bounds(pool: &ObjectPool, root_handle: ObjectHandle) -> Aabb {
+pub fn compute_room_bounds(room: &URoomGenerator) -> Aabb {
     let mut aabb = Aabb::new();
-    let features = crate::rma::load_room_features(pool, root_handle);
 
-    fn process_features(pool: &ObjectPool, features: &[RoomFeature], aabb: &mut Aabb) {
+    fn process_features(features: &[URoomFeature], aabb: &mut Aabb) {
         for feature in features {
-            let obj = pool.get(feature.handle()).expect("Invalid handle");
-            let props = obj.properties();
-
-            match feature {
-                RoomFeature::FloodFillBox(_) => {
-                    let typed = UFloodFillBox::from_properties(props).unwrap();
-                    let pos: Vector3<f32> = typed.position().into();
-                    let ext: Vector3<f32> = typed.extends().into();
-                    // Box corners
+            match &feature.feature_type {
+                URoomFeatureType::FloodFillBox(f) => {
+                    let pos: Vector3<f32> = (&f.position).into();
+                    let ext: Vector3<f32> = (&f.extends).into();
                     aabb.expand_point(pos - ext);
                     aabb.expand_point(pos + ext);
                 }
-                RoomFeature::FloodFillPillar(_) => {
-                    let typed = UFloodFillPillar::from_properties(props).unwrap();
-                    for point in typed.points().iter() {
-                        let loc: Vector3<f32> = point.location().into();
-                        let range = point.range();
-                        let r = range.max().max(range.min());
+                URoomFeatureType::FloodFillPillar(f) => {
+                    for point in &f.points {
+                        let loc: Vector3<f32> = (&point.location).into();
+                        let r = point.range.max.max(point.range.min);
                         aabb.expand_point(loc - vec3(r, r, r));
                         aabb.expand_point(loc + vec3(r, r, r));
                     }
                 }
-                RoomFeature::FloodFillLine(_) => {
-                    let typed = UFloodFillLine::from_properties(props).unwrap();
-                    for point in typed.points().iter() {
-                        let loc: Vector3<f32> = point.location().into();
-                        let h = point.h_range();
-                        let v = point.v_range();
+                URoomFeatureType::FloodFillLine(f) => {
+                    for point in &f.points {
+                        let loc: Vector3<f32> = (&point.location).into();
+                        let h = point.h_range;
+                        let v = point.v_range;
                         aabb.expand_point(loc - vec3(h, h, v));
                         aabb.expand_point(loc + vec3(h, h, v));
                     }
                 }
-                RoomFeature::EntranceFeature(_) => {
-                    let typed = UEntranceFeature::from_properties(props).unwrap();
-                    let loc: Vector3<f32> = typed.location().into();
+                URoomFeatureType::Entrance(f) => {
+                    let loc: Vector3<f32> = (&f.location).into();
                     aabb.expand_point(loc);
                 }
-                RoomFeature::SpawnActorFeature(_) => {
-                    let typed = USpawnActorFeature::from_properties(props).unwrap();
-                    let loc: Vector3<f32> = typed.location().into();
+                URoomFeatureType::SpawnActor(f) => {
+                    let loc: Vector3<f32> = (&f.location).into();
                     aabb.expand_point(loc);
                 }
-                RoomFeature::DropPodCalldownLocationFeature(_) => {
-                    let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
-                    let loc: Vector3<f32> = typed.location().into();
+                URoomFeatureType::DropPodCalldownLocation(f) => {
+                    let loc: Vector3<f32> = (&f.location).into();
                     aabb.expand_point(loc);
                 }
                 _ => {}
             }
 
             // Process children recursively
-            let children = feature.get_child_features(pool);
-            process_features(pool, &children, aabb);
+            process_features(&feature.children, aabb);
         }
     }
 
-    process_features(pool, &features, &mut aabb);
+    process_features(&room.room_features, &mut aabb);
     aabb
 }
 

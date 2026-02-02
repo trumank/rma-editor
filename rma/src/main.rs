@@ -1,19 +1,15 @@
-#[cfg(target_arch = "wasm32")]
-use crate as rma;
-
 use anyhow::Result;
 use log::info;
 use rma::AppMode;
 use rma::CameraMode;
+use rma::convert::load_room_generator;
 use rma::fly_control::FlyControl;
-use rma::rma::FQuat;
-use rma::rma::FTransform;
-use rma::rma::FVector;
-use rma::rma::RoomFeature;
+use rma::objects::{FQuat, FTransform, FVector, URoomFeature, URoomGenerator};
 use rma::room_features::Gizmos;
 use rma::room_features::build_feature;
 use rma::room_features::build_grid_planes;
 use rma::room_features::compute_room_bounds;
+use rma::room_features::feature_type_name;
 use three_d::*;
 use transform_gizmo_egui::Gizmo;
 use transform_gizmo_egui::GizmoConfig;
@@ -39,35 +35,28 @@ fn main() -> Result<()> {
     run(AppMode::Editor { path })
 }
 
-fn iter_features<F, T>(
-    pool: &ObjectPool,
-    features: &[RoomFeature],
-    path: &mut Vec<usize>,
-    f: &mut F,
-) where
-    F: FnMut(&RoomFeature, &[usize]) -> T,
+fn iter_features<F, T>(features: &[URoomFeature], path: &mut Vec<usize>, f: &mut F)
+where
+    F: FnMut(&URoomFeature, &[usize]) -> T,
 {
     path.push(0);
     for (i, feat) in features.iter().enumerate() {
         *path.last_mut().unwrap() = i;
         f(feat, path);
-        let children = feat.get_child_features(pool);
-        iter_features(pool, &children, path, f);
+        iter_features(&feat.children, path, f);
     }
     path.pop();
 }
 
 fn build_primitives(
     ctx: &RMAContext,
-    pool: &ObjectPool,
-    root_handle: ObjectHandle,
+    room: &URoomGenerator,
 ) -> HashMap<Vec<usize>, Vec<Box<dyn Object>>> {
     let mut primitives = HashMap::new();
-    let features = rma::rma::load_room_features(pool, root_handle);
     let mut path = vec![];
 
-    iter_features(pool, &features, &mut path, &mut |f, path| {
-        let objs = build_feature(pool, f.handle(), f, ctx, None);
+    iter_features(&room.room_features, &mut path, &mut |f, path| {
+        let objs = build_feature(f, ctx, None);
         if !objs.is_empty() {
             primitives.insert(path.to_vec(), objs);
         }
@@ -88,6 +77,7 @@ impl Default for State {
 struct App {
     panel_width: f32,
     mode: AppMode,
+    room: Option<URoomGenerator>,
     selected_room: Option<String>,
     selected_feature: Vec<usize>,
     hovered_feature: Option<Vec<usize>>,
@@ -112,13 +102,13 @@ struct App {
 }
 
 pub fn run(mode: AppMode) -> Result<()> {
-    let (mut pool, root_handle) = match &mode {
+    let room = match &mode {
         AppMode::Editor { path } => {
             let mut pool = ObjectPool::new();
             let handle = rma::load_rma_asset(Path::new(path), &mut pool)?;
-            (Some(pool), Some(handle))
+            load_room_generator(&pool, handle).ok()
         }
-        AppMode::Gallery { paths: _ } => (None, None),
+        AppMode::Gallery { paths: _ } => None,
     };
 
     let mut ex = futures::executor::LocalPool::new();
@@ -178,21 +168,19 @@ pub fn run(mode: AppMode) -> Result<()> {
     let mut gui = three_d::GUI::new(&context);
     let (tx, rx) = mpsc::channel();
 
-    let primitives = match (&pool, root_handle) {
-        (Some(p), Some(h)) => Some(build_primitives(&rma_ctx, p, h)),
-        _ => None,
-    };
+    let primitives = room.as_ref().map(|r| build_primitives(&rma_ctx, r));
 
-    let grid_objects = match (&pool, root_handle) {
-        (Some(p), Some(h)) => {
-            let bounds = compute_room_bounds(p, h);
+    let grid_objects = room
+        .as_ref()
+        .map(|r| {
+            let bounds = compute_room_bounds(r);
             build_grid_planes(&rma_ctx, &bounds)
-        }
-        _ => Vec::new(),
-    };
+        })
+        .unwrap_or_default();
 
     let mut app = App {
         panel_width: 400.0,
+        room,
         primitives,
         grid_objects,
         mode,
@@ -221,18 +209,19 @@ pub fn run(mode: AppMode) -> Result<()> {
         ex.run_until_stalled();
 
         if let Ok((new_pool, new_handle)) = rx.try_recv() {
-            pool = Some(new_pool);
+            app.room = load_room_generator(&new_pool, new_handle).ok();
             app.states.clear();
             let ctx = RMAContext {
                 context: &app.context,
                 wireframe_material: app.wireframe_material.clone(),
                 wireframe_mesh: app.wireframe_mesh.clone(),
             };
-            app.primitives = pool.as_ref().map(|p| build_primitives(&ctx, p, new_handle));
-            app.grid_objects = pool
+            app.primitives = app.room.as_ref().map(|r| build_primitives(&ctx, r));
+            app.grid_objects = app
+                .room
                 .as_ref()
-                .map(|p| {
-                    let bounds = compute_room_bounds(p, new_handle);
+                .map(|r| {
+                    let bounds = compute_room_bounds(r);
                     build_grid_planes(&ctx, &bounds)
                 })
                 .unwrap_or_default();
@@ -261,14 +250,7 @@ pub fn run(mode: AppMode) -> Result<()> {
                 {
                     let mut gizmos = vec![];
 
-                    draw_panel(
-                        gui_context,
-                        &mut app,
-                        &mut pool,
-                        root_handle,
-                        &mut changed,
-                        &mut gizmos,
-                    );
+                    draw_panel(gui_context, &mut app, &mut changed, &mut gizmos);
 
                     let viewport = egui::Rect::from_min_max(
                         (app.panel_width, 0.).into(),
@@ -288,18 +270,15 @@ pub fn run(mode: AppMode) -> Result<()> {
                 }
 
                 if changed {
-                    app.primitives = pool.as_ref().and_then(|p| {
-                        root_handle.map(|h| {
-                            build_primitives(
-                                &RMAContext {
-                                    context: &app.context,
-                                    wireframe_material: app.wireframe_material.clone(),
-                                    wireframe_mesh: app.wireframe_mesh.clone(),
-                                },
-                                p,
-                                h,
-                            )
-                        })
+                    app.primitives = app.room.as_ref().map(|r| {
+                        build_primitives(
+                            &RMAContext {
+                                context: &app.context,
+                                wireframe_material: app.wireframe_material.clone(),
+                                wireframe_mesh: app.wireframe_mesh.clone(),
+                            },
+                            r,
+                        )
                     });
                 }
             },
@@ -309,27 +288,27 @@ pub fn run(mode: AppMode) -> Result<()> {
             frame_input.events.clear();
         }
 
+        // Helper to navigate to a feature by path
+        fn get_feature_by_path<'a>(
+            room: &'a URoomGenerator,
+            path: &[usize],
+        ) -> Option<&'a URoomFeature> {
+            let mut path_iter = path.iter();
+            let first = *path_iter.next()?;
+            let mut current = room.room_features.get(first)?;
+            for &idx in path_iter {
+                current = current.children.get(idx)?;
+            }
+            Some(current)
+        }
+
         // Update highlighted primitive if hover changed
         if app.hovered_feature != app.prev_hovered_feature {
             app.prev_hovered_feature = app.hovered_feature.clone();
             app.highlighted_primitive = None;
 
-            if let (Some(hovered_path), Some(p), Some(h)) =
-                (&app.hovered_feature, &pool, root_handle)
-            {
-                // Navigate to the hovered feature
-                let room_features = rma::rma::load_room_features(p, h);
-                let mut path_iter = hovered_path.iter();
-                if let Some(&first) = path_iter.next()
-                    && let Some(feature) = room_features.get(first)
-                {
-                    let mut current = feature.clone();
-                    for &idx in path_iter {
-                        let children = current.get_child_features(p);
-                        if let Some(child) = children.get(idx) {
-                            current = child.clone();
-                        }
-                    }
+            if let (Some(hovered_path), Some(room)) = (&app.hovered_feature, &app.room) {
+                if let Some(feature) = get_feature_by_path(room, hovered_path) {
                     // Build highlighted version with bright yellow color
                     let highlight_color = Srgba::new_opaque(255, 255, 100);
                     let ctx = RMAContext {
@@ -337,13 +316,8 @@ pub fn run(mode: AppMode) -> Result<()> {
                         wireframe_material: app.wireframe_material.clone(),
                         wireframe_mesh: app.wireframe_mesh.clone(),
                     };
-                    app.highlighted_primitive = Some(build_feature(
-                        p,
-                        current.handle(),
-                        &current,
-                        &ctx,
-                        Some(highlight_color),
-                    ));
+                    app.highlighted_primitive =
+                        Some(build_feature(feature, &ctx, Some(highlight_color)));
                 }
             }
         }
@@ -353,55 +327,23 @@ pub fn run(mode: AppMode) -> Result<()> {
             app.prev_selected_feature = app.selected_feature.clone();
             app.selected_primitive = None;
 
-            if let (Some(p), Some(h)) = (&pool, root_handle)
-                && !app.selected_feature.is_empty()
-            {
-                // Navigate to the selected feature
-                let room_features = rma::rma::load_room_features(p, h);
-                let mut path_iter = app.selected_feature.iter();
-                if let Some(&first) = path_iter.next()
-                    && let Some(feature) = room_features.get(first)
-                {
-                    let mut current = feature.clone();
-                    for &idx in path_iter {
-                        let children = current.get_child_features(p);
-                        if let Some(child) = children.get(idx) {
-                            current = child.clone();
-                        }
+            if let Some(room) = &app.room {
+                if !app.selected_feature.is_empty() {
+                    if let Some(feature) = get_feature_by_path(room, &app.selected_feature) {
+                        // Build selected version with cyan color
+                        let select_color = Srgba::new_opaque(100, 200, 255);
+                        let ctx = RMAContext {
+                            context: &app.context,
+                            wireframe_material: app.wireframe_material.clone(),
+                            wireframe_mesh: app.wireframe_mesh.clone(),
+                        };
+                        app.selected_primitive =
+                            Some(build_feature(feature, &ctx, Some(select_color)));
                     }
-                    // Build selected version with cyan color
-                    let select_color = Srgba::new_opaque(100, 200, 255);
-                    let ctx = RMAContext {
-                        context: &app.context,
-                        wireframe_material: app.wireframe_material.clone(),
-                        wireframe_mesh: app.wireframe_mesh.clone(),
-                    };
-                    app.selected_primitive = Some(build_feature(
-                        p,
-                        current.handle(),
-                        &current,
-                        &ctx,
-                        Some(select_color),
-                    ));
                 }
             }
         }
 
-        #[cfg(target_arch = "wasm32")]
-        for event in &mut frame_input.events {
-            if let Event::MouseWheel {
-                ref mut delta,
-                handled,
-                ..
-            } = event
-            {
-                if !*handled {
-                    // artificially decrease zoom delta
-                    // https://github.com/asny/three-d/issues/403
-                    delta.1 /= 5.;
-                }
-            }
-        }
         // Compute delta time
         let dt = (frame_input.accumulated_time - last_time) as f32;
         last_time = frame_input.accumulated_time;
@@ -477,14 +419,7 @@ pub fn run(mode: AppMode) -> Result<()> {
     Ok(())
 }
 
-fn draw_panel<'g>(
-    ctx: &egui::Context,
-    app: &mut App,
-    pool: &'g mut Option<ObjectPool>,
-    root_handle: Option<ObjectHandle>,
-    changed: &mut bool,
-    gizmos: &mut Gizmos<'g>,
-) {
+fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos: &mut Gizmos<'g>) {
     use three_d::egui::*;
     SidePanel::left("side_panel")
         .resizable(false)
@@ -514,9 +449,8 @@ fn draw_panel<'g>(
             #[allow(clippy::too_many_arguments)]
             fn features(
                 ui: &mut Ui,
-                pool: &ObjectPool,
                 path: &mut Vec<usize>,
-                f: &[RoomFeature],
+                f: &[URoomFeature],
                 states: &mut HashMap<Vec<usize>, State>,
                 selected_feature: &mut Vec<usize>,
                 deferred_select: &mut Vec<usize>,
@@ -541,7 +475,8 @@ fn draw_panel<'g>(
                                 is_hovered = true;
                             }
                             let mut checked = path == selected_feature;
-                            let toggle = ui.toggle_value(&mut checked, f.name());
+                            let toggle =
+                                ui.toggle_value(&mut checked, feature_type_name(&f.feature_type));
                             if toggle.hovered() {
                                 is_hovered = true;
                             }
@@ -550,12 +485,10 @@ fn draw_panel<'g>(
                             }
                         })
                         .body(|ui| {
-                            let children = f.get_child_features(pool);
                             features(
                                 ui,
-                                pool,
                                 path,
-                                &children,
+                                &f.children,
                                 states,
                                 selected_feature,
                                 deferred_select,
@@ -617,15 +550,13 @@ fn draw_panel<'g>(
                         ui.group(|ui| {
                             ui.heading("Room Features");
                             egui::ScrollArea::vertical().show(ui, |ui| {
-                                if let (Some(p), Some(h)) = (pool.as_ref(), root_handle) {
-                                    let room_features = rma::rma::load_room_features(p, h);
+                                if let Some(room) = &app.room {
                                     let mut path = vec![];
                                     app.hovered_feature = None; // Reset before checking
                                     features(
                                         ui,
-                                        p,
                                         &mut path,
-                                        &room_features,
+                                        &room.room_features,
                                         &mut app.states,
                                         &mut app.selected_feature,
                                         &mut deferred_select,
@@ -639,30 +570,33 @@ fn draw_panel<'g>(
                 });
 
                 // Edit feature panel
-                let mut path_iter = app.selected_feature.iter();
-                if let Some(first) = path_iter.next() {
+                if !app.selected_feature.is_empty() {
                     strip.cell(|ui| {
                         ui.push_id("edit feature", |ui| {
                             ui.group(|ui| {
                                 ui.heading("Edit Feature");
                                 egui::ScrollArea::vertical().show(ui, |ui| {
-                                    if let (Some(p), Some(h)) = (pool.as_mut(), root_handle) {
-                                        let room_features = rma::rma::load_room_features(p, h);
-                                        if let Some(feature) = room_features.get(*first) {
-                                            // Navigate to the selected feature
-                                            let mut current = feature.clone();
-                                            for &idx in path_iter {
-                                                let children = current.get_child_features(p);
-                                                if let Some(child) = children.get(idx) {
-                                                    current = child.clone();
-                                                }
-                                            }
+                                    // Helper to navigate to feature by path
+                                    fn get_feature_by_path<'a>(
+                                        room: &'a URoomGenerator,
+                                        path: &[usize],
+                                    ) -> Option<&'a URoomFeature>
+                                    {
+                                        let mut path_iter = path.iter();
+                                        let first = *path_iter.next()?;
+                                        let mut current = room.room_features.get(first)?;
+                                        for &idx in path_iter {
+                                            current = current.children.get(idx)?;
+                                        }
+                                        Some(current)
+                                    }
+
+                                    if let Some(room) = &app.room {
+                                        if let Some(feature) =
+                                            get_feature_by_path(room, &app.selected_feature)
+                                        {
                                             *changed |= rma::room_features::edit_feature(
-                                                p,
-                                                current.handle(),
-                                                &current,
-                                                ui,
-                                                gizmos,
+                                                feature, ui, gizmos,
                                             );
                                         }
                                     }
@@ -734,20 +668,20 @@ fn draw_gizmo(
                         let mut transform =
                             transform_gizmo_egui::math::Transform::from_scale_rotation_translation(
                                 [
-                                    start.Scale3D.x.0 as f64,
-                                    start.Scale3D.y.0 as f64,
-                                    start.Scale3D.z.0 as f64,
+                                    start.Scale3D.x as f64,
+                                    start.Scale3D.y as f64,
+                                    start.Scale3D.z as f64,
                                 ],
                                 [
-                                    start.rotation.x.0 as f64,
-                                    start.rotation.y.0 as f64,
-                                    start.rotation.z.0 as f64,
-                                    start.rotation.w.0 as f64,
+                                    start.rotation.x as f64,
+                                    start.rotation.y as f64,
+                                    start.rotation.z as f64,
+                                    start.rotation.w as f64,
                                 ],
                                 [
-                                    start.translation.x.0 as f64,
-                                    start.translation.y.0 as f64,
-                                    start.translation.z.0 as f64,
+                                    start.translation.x as f64,
+                                    start.translation.y as f64,
+                                    start.translation.z as f64,
                                 ],
                             );
 
@@ -767,20 +701,20 @@ fn draw_gizmo(
 
                             let new_transform = FTransform {
                                 translation: FVector {
-                                    x: (transform.translation.x as f32).into(),
-                                    y: (transform.translation.y as f32).into(),
-                                    z: (transform.translation.z as f32).into(),
+                                    x: transform.translation.x as f32,
+                                    y: transform.translation.y as f32,
+                                    z: transform.translation.z as f32,
                                 },
                                 rotation: FQuat {
-                                    x: (transform.rotation.v.x as f32).into(),
-                                    y: (transform.rotation.v.y as f32).into(),
-                                    z: (transform.rotation.v.z as f32).into(),
-                                    w: (transform.rotation.s as f32).into(),
+                                    x: transform.rotation.v.x as f32,
+                                    y: transform.rotation.v.y as f32,
+                                    z: transform.rotation.v.z as f32,
+                                    w: transform.rotation.s as f32,
                                 },
                                 Scale3D: FVector {
-                                    x: (transform.scale.x as f32).into(),
-                                    y: (transform.scale.y as f32).into(),
-                                    z: (transform.scale.z as f32).into(),
+                                    x: transform.scale.x as f32,
+                                    y: transform.scale.y as f32,
+                                    z: transform.scale.z as f32,
                                 },
                             };
                             println!(
