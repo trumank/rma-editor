@@ -42,7 +42,7 @@ fn flood_fill_line_sdf(line: &UFloodFillLine) -> impl Fn(&Point3<f64>) -> f64 + 
         }
 
         // Helper function for ellipsoid segment between two points
-        // with vertical cross-sections that only rotate around Z axis
+        // Uses full 3D projection onto segment, with vertically-oriented ellipsoid cross-sections
         let sd_ellipsoid_segment = |p: &Point3<f64>, a: &FRoomLinePoint, b: &FRoomLinePoint| {
             let a_point = Point3::new(
                 a.location.x as f64,
@@ -54,85 +54,62 @@ fn flood_fill_line_sdf(line: &UFloodFillLine) -> impl Fn(&Point3<f64>) -> f64 + 
                 b.location.y as f64,
                 b.location.z as f64,
             );
-            let a_h_range = a.h_range as f64;
-            let b_h_range = b.h_range as f64;
-            let a_v_range = a.v_range as f64;
-            let b_v_range = b.v_range as f64;
-            let a_floor_depth = a.floor_depth as f64;
-            let b_floor_depth = b.floor_depth as f64;
 
-            // Calculate direction in XY plane only (keeping cross-section vertical)
-            let horizontal_dir = Point3::new(b_point.x - a_point.x, b_point.y - a_point.y, 0.0);
-            let horizontal_length = horizontal_dir.coords.norm();
+            // Full 3D segment direction (nalgebra Vector3)
+            let ba = b_point - a_point;
+            let pa = p - a_point;
+            let ba_len_sq = ba.dot(&ba);
 
-            if horizontal_length < 1e-6 {
-                // Points are vertically aligned, just use a simple vertical cylinder
-                let offset = Point3::new(p.x - a_point.x, p.y - a_point.y, 0.0);
-                let horizontal_dist = offset.coords.norm();
-                let vertical_dist = (p.z - a_point.z.min(b_point.z).max(a_point.z.max(b_point.z)))
-                    .abs()
-                    .min((p.z - a_point.z).abs().min((p.z - b_point.z).abs()));
-                let r_h = (a_h_range + b_h_range) * 0.5;
-                let r_v = (a_v_range + b_v_range) * 0.5;
-                let floor_d = (a_floor_depth + b_floor_depth) * 0.5;
+            // Project point onto the 3D line segment
+            let h = if ba_len_sq > 1e-12 {
+                pa.dot(&ba) / ba_len_sq
+            } else {
+                0.5
+            };
+            let t = h.clamp(0.0, 1.0);
 
-                let k0 = ((horizontal_dist / r_h).powi(2) + (vertical_dist / r_v).powi(2)).sqrt();
-                let k1 = horizontal_dist / (r_h * r_h) + vertical_dist / (r_v * r_v);
-                let ellipsoid_dist = if k1.abs() > 1e-10 {
-                    k0 * (k0 - 1.0) / k1
-                } else {
-                    f64::INFINITY
-                };
+            // Interpolate all parameters
+            let r_h = (a.h_range as f64 * (1.0 - t) + b.h_range as f64 * t).max(0.01);
+            let r_v = (a.v_range as f64 * (1.0 - t) + b.v_range as f64 * t).max(0.01);
+            let floor_d = a.floor_depth as f64 * (1.0 - t) + b.floor_depth as f64 * t;
+            let floor_angle = a.floor_angle as f64 * (1.0 - t) + b.floor_angle as f64 * t;
 
-                // Apply floor constraint
-                let avg_z = (a_point.z + b_point.z) * 0.5;
-                let floor_dist = avg_z - floor_d - p.z;
-                return ellipsoid_dist.max(floor_dist);
-            }
-
-            let horizontal_dir_normalized = horizontal_dir / horizontal_length;
-
-            // Project point onto the horizontal line segment
-            let pa_horizontal = Point3::new(p.x - a_point.x, p.y - a_point.y, 0.0);
-            let projection_dist = pa_horizontal
-                .coords
-                .dot(&horizontal_dir_normalized.coords)
-                .clamp(0.0, horizontal_length);
-
-            // Interpolation parameter along the segment
-            let t = projection_dist / horizontal_length;
-
-            // Interpolated Z position, radii, and floor depth
-            let z_interp = a_point.z * (1.0 - t) + b_point.z * t;
-            let r_h = a_h_range * (1.0 - t) + b_h_range * t;
-            let r_v = a_v_range * (1.0 - t) + b_v_range * t;
-            let floor_d = a_floor_depth * (1.0 - t) + b_floor_depth * t;
-
-            // Point on the segment axis (interpolated in XY, linearly interpolated in Z)
-            let segment_point = Point3::new(
-                a_point.x + horizontal_dir_normalized.x * projection_dist,
-                a_point.y + horizontal_dir_normalized.y * projection_dist,
-                z_interp,
-            );
-
+            // Point on the segment axis
+            let segment_point = a_point + ba * t;
             let offset = p - segment_point;
 
-            // Calculate distance to ellipsoid with vertical cross-sections
-            let horizontal_dist = (offset.x * offset.x + offset.y * offset.y).sqrt();
-            let vertical_dist = offset.z.abs();
+            // Calculate perpendicular direction (right vector) for floor angle
+            // This is perpendicular to the segment direction in the XY plane
+            let horizontal_dir_len = (ba.x * ba.x + ba.y * ba.y).sqrt();
+            let (right_x, right_y) = if horizontal_dir_len > 1e-6 {
+                (-ba.y / horizontal_dir_len, ba.x / horizontal_dir_len)
+            } else {
+                (1.0, 0.0)
+            };
+            let perp_dist = offset.x * right_x + offset.y * right_y;
 
-            // Approximate SDF for ellipsoid
-            let k0 = ((horizontal_dist / r_h).powi(2) + (vertical_dist / r_v).powi(2)).sqrt();
-            let k1 = horizontal_dist / (r_h * r_h) + vertical_dist / (r_v * r_v);
-            let ellipsoid_dist = if k1.abs() > 1e-10 {
+            // Ellipsoid SDF with vertically-oriented radii: (r_h, r_h, r_v)
+            let qx = offset.x / r_h;
+            let qy = offset.y / r_h;
+            let qz = offset.z / r_v;
+            let k0 = (qx * qx + qy * qy + qz * qz).sqrt();
+
+            let q2x = offset.x / (r_h * r_h);
+            let q2y = offset.y / (r_h * r_h);
+            let q2z = offset.z / (r_v * r_v);
+            let k1 = (q2x * q2x + q2y * q2y + q2z * q2z).sqrt();
+
+            let ellipsoid_dist = if k1 > 1e-10 {
                 k0 * (k0 - 1.0) / k1
             } else {
                 f64::INFINITY
             };
 
-            // Apply floor constraint (plane at z_interp - floor_depth)
-            // SDF for plane: distance = plane_z - point_z (positive when point is below plane)
-            let floor_dist = z_interp - floor_d - p.z;
+            // Apply floor constraint with angle (tilted plane)
+            let angle_rad = floor_angle.to_radians();
+            let angle_offset = -angle_rad.sin() * perp_dist;
+            let floor_z = segment_point.z + floor_d + angle_offset;
+            let floor_dist = floor_z - p.z;
 
             // Max combines the SDFs (intersection: point must be inside ellipsoid AND above floor)
             ellipsoid_dist.max(floor_dist)
@@ -258,7 +235,7 @@ fn compute_csg_bounds<V: VisibilityCheck>(room: &URoomGenerator, visibility: &V)
                             vec3(point.location.x, point.location.y, point.location.z);
                         let h = point.h_range;
                         let v = point.v_range;
-                        aabb.expand_point(loc - vec3(h, h, v + point.floor_depth));
+                        aabb.expand_point(loc - vec3(h, h, v - point.floor_depth));
                         aabb.expand_point(loc + vec3(h, h, v));
                     }
                 }
