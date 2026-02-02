@@ -1,9 +1,7 @@
 #![allow(special_module_name)]
 pub mod convert;
-pub mod debug_lines;
-pub mod fly_control;
 pub mod objects;
-pub mod room_features;
+pub mod scene;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CameraMode {

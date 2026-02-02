@@ -3,13 +3,13 @@ use log::info;
 use rma::AppMode;
 use rma::CameraMode;
 use rma::convert::load_room_generator;
-use rma::fly_control::FlyControl;
 use rma::objects::{FQuat, FTransform, FVector, URoomFeature, URoomGenerator};
-use rma::room_features::Gizmos;
-use rma::room_features::build_feature;
-use rma::room_features::build_grid_planes;
-use rma::room_features::compute_room_bounds;
-use rma::room_features::feature_type_name;
+use rma::scene::fly_control::FlyControl;
+use rma::scene::room_features::Gizmos;
+use rma::scene::room_features::build_feature;
+use rma::scene::room_features::build_grid_planes;
+use rma::scene::room_features::compute_room_bounds;
+use rma::scene::room_features::feature_type_name;
 use three_d::*;
 use transform_gizmo_egui::Gizmo;
 use transform_gizmo_egui::GizmoConfig;
@@ -595,7 +595,7 @@ fn draw_panel<'g>(ctx: &egui::Context, app: &mut App, changed: &mut bool, gizmos
                                         if let Some(feature) =
                                             get_feature_by_path(room, &app.selected_feature)
                                         {
-                                            *changed |= rma::room_features::edit_feature(
+                                            *changed |= rma::scene::room_features::edit_feature(
                                                 feature, ui, gizmos,
                                             );
                                         }

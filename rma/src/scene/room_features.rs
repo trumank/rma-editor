@@ -9,8 +9,8 @@ use three_d::{
 use transform_gizmo_egui::GizmoMode;
 
 use crate::RMAContext;
-use crate::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
 use crate::objects::*;
+use super::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
 
 // Wireframe visualization constants
 const CIRCLE_SEGMENTS: usize = 40;
