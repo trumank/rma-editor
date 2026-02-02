@@ -1,4 +1,5 @@
 #![allow(special_module_name)]
+pub mod debug_lines;
 pub mod rma;
 pub mod room_features;
 pub mod typed_properties;

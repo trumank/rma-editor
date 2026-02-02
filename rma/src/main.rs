@@ -9,6 +9,8 @@ use rma::rma::FTransform;
 use rma::rma::FVector;
 use rma::rma::RoomFeature;
 use rma::room_features::build_feature;
+use rma::room_features::build_grid_planes;
+use rma::room_features::compute_room_bounds;
 use rma::room_features::Gizmos;
 use rma::AppMode;
 use three_d::*;
@@ -94,6 +96,7 @@ struct App {
     wireframe_material: PhysicalMaterial,
     wireframe_mesh: CpuMesh,
     primitives: Option<HashMap<Vec<usize>, Vec<Box<dyn Object>>>>,
+    grid_objects: Vec<Box<dyn Object>>,
     camera: Camera,
     gizmos: Vec<Gizmo>,
 }
@@ -123,10 +126,10 @@ pub fn run(mode: AppMode) -> Result<()> {
         vec3(0.0, 0.0, 0.0),
         vec3(0.0, 0.0, 1.0),
         degrees(45.0),
-        0.1,
-        100000.0,
+        1.0,
+        1000000.0,
     );
-    let mut control = OrbitControl::new(camera.target().clone(), 1.0, 100000.0);
+    let mut control = OrbitControl::new(camera.target().clone(), 1.0, 1000000.0);
 
     let mut wireframe_material = PhysicalMaterial::new_opaque(
         &context,
@@ -165,9 +168,18 @@ pub fn run(mode: AppMode) -> Result<()> {
         _ => None,
     };
 
+    let grid_objects = match (&pool, root_handle) {
+        (Some(p), Some(h)) => {
+            let bounds = compute_room_bounds(p, h);
+            build_grid_planes(&rma_ctx, &bounds)
+        }
+        _ => Vec::new(),
+    };
+
     let mut app = App {
         panel_width: 400.0,
         primitives,
+        grid_objects,
         mode,
         selected_room: None,
         selected_feature: vec![],
@@ -188,17 +200,19 @@ pub fn run(mode: AppMode) -> Result<()> {
         if let Ok((new_pool, new_handle)) = rx.try_recv() {
             pool = Some(new_pool);
             app.states.clear();
-            app.primitives = pool.as_ref().map(|p| {
-                build_primitives(
-                    &RMAContext {
-                        context: &app.context,
-                        wireframe_material: app.wireframe_material.clone(),
-                        wireframe_mesh: app.wireframe_mesh.clone(),
-                    },
-                    p,
-                    new_handle,
-                )
-            });
+            let ctx = RMAContext {
+                context: &app.context,
+                wireframe_material: app.wireframe_material.clone(),
+                wireframe_mesh: app.wireframe_mesh.clone(),
+            };
+            app.primitives = pool.as_ref().map(|p| build_primitives(&ctx, p, new_handle));
+            app.grid_objects = pool
+                .as_ref()
+                .map(|p| {
+                    let bounds = compute_room_bounds(p, new_handle);
+                    build_grid_planes(&ctx, &bounds)
+                })
+                .unwrap_or_default();
         }
 
         let scaled_panel_width = app.panel_width * frame_input.device_pixel_ratio;
@@ -295,6 +309,7 @@ pub fn run(mode: AppMode) -> Result<()> {
             .render(
                 &app.camera,
                 axes.into_iter()
+                    .chain(app.grid_objects.iter().map(|o| o.deref()))
                     .chain(app.primitives.iter().flatten().flat_map(|(path, p)| {
                         app.states
                             .get(path)

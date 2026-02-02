@@ -8,6 +8,8 @@ use three_d::{
 };
 use transform_gizmo_egui::GizmoMode;
 
+use crate::debug_lines::{DebugLine, DebugLineMaterial, DebugLines};
+
 use asset_ser::core::object_pool::{ObjectHandle, ObjectPool};
 
 use crate::{
@@ -394,4 +396,213 @@ fn vector3_editor(ui: &mut egui::Ui, vec: &mut FVector) -> bool {
             .c(&mut changed);
     });
     changed
+}
+
+/// Axis-aligned bounding box with min/max corners
+#[derive(Debug, Clone, Copy)]
+pub struct Aabb {
+    pub min: Vector3<f32>,
+    pub max: Vector3<f32>,
+}
+
+impl Aabb {
+    pub fn new() -> Self {
+        Self {
+            min: vec3(f32::MAX, f32::MAX, f32::MAX),
+            max: vec3(f32::MIN, f32::MIN, f32::MIN),
+        }
+    }
+
+    pub fn expand_point(&mut self, p: Vector3<f32>) {
+        self.min.x = self.min.x.min(p.x);
+        self.min.y = self.min.y.min(p.y);
+        self.min.z = self.min.z.min(p.z);
+        self.max.x = self.max.x.max(p.x);
+        self.max.y = self.max.y.max(p.y);
+        self.max.z = self.max.z.max(p.z);
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.min.x <= self.max.x && self.min.y <= self.max.y && self.min.z <= self.max.z
+    }
+
+    pub fn size(&self) -> Vector3<f32> {
+        self.max - self.min
+    }
+
+    pub fn center(&self) -> Vector3<f32> {
+        (self.min + self.max) * 0.5
+    }
+
+    /// Pad the bounding box by a percentage on each side
+    pub fn padded(&self, percent: f32) -> Self {
+        let size = self.size();
+        let padding = size * percent;
+        Self {
+            min: self.min - padding,
+            max: self.max + padding,
+        }
+    }
+}
+
+impl Default for Aabb {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Compute the bounding box of all features in the room
+pub fn compute_room_bounds(pool: &ObjectPool, root_handle: ObjectHandle) -> Aabb {
+    let mut aabb = Aabb::new();
+    let features = crate::rma::load_room_features(pool, root_handle);
+
+    fn process_features(pool: &ObjectPool, features: &[RoomFeature], aabb: &mut Aabb) {
+        for feature in features {
+            let obj = pool.get(feature.handle()).expect("Invalid handle");
+            let props = obj.properties();
+
+            match feature {
+                RoomFeature::FloodFillBox(_) => {
+                    let typed = UFloodFillBox::from_properties(props).unwrap();
+                    let pos: Vector3<f32> = typed.position().into();
+                    let ext: Vector3<f32> = typed.extends().into();
+                    // Box corners
+                    aabb.expand_point(pos - ext);
+                    aabb.expand_point(pos + ext);
+                }
+                RoomFeature::FloodFillPillar(_) => {
+                    let typed = UFloodFillPillar::from_properties(props).unwrap();
+                    for point in typed.points().iter() {
+                        let loc: Vector3<f32> = point.location().into();
+                        let range = point.range();
+                        let r = range.max().max(range.min());
+                        aabb.expand_point(loc - vec3(r, r, r));
+                        aabb.expand_point(loc + vec3(r, r, r));
+                    }
+                }
+                RoomFeature::FloodFillLine(_) => {
+                    let typed = UFloodFillLine::from_properties(props).unwrap();
+                    for point in typed.points().iter() {
+                        let loc: Vector3<f32> = point.location().into();
+                        let h = point.h_range();
+                        let v = point.v_range();
+                        aabb.expand_point(loc - vec3(h, h, v));
+                        aabb.expand_point(loc + vec3(h, h, v));
+                    }
+                }
+                RoomFeature::EntranceFeature(_) => {
+                    let typed = UEntranceFeature::from_properties(props).unwrap();
+                    let loc: Vector3<f32> = typed.location().into();
+                    aabb.expand_point(loc);
+                }
+                RoomFeature::SpawnActorFeature(_) => {
+                    let typed = USpawnActorFeature::from_properties(props).unwrap();
+                    let loc: Vector3<f32> = typed.location().into();
+                    aabb.expand_point(loc);
+                }
+                RoomFeature::DropPodCalldownLocationFeature(_) => {
+                    let typed = UDropPodCalldownLocationFeature::from_properties(props).unwrap();
+                    let loc: Vector3<f32> = typed.location().into();
+                    aabb.expand_point(loc);
+                }
+                _ => {}
+            }
+
+            // Process children recursively
+            let children = feature.get_child_features(pool);
+            process_features(pool, &children, aabb);
+        }
+    }
+
+    process_features(pool, &features, &mut aabb);
+    aabb
+}
+
+/// Build grid planes for the room based on bounding box
+/// Creates grid lines on XY, XZ, and YZ planes, each plane is square (max dimension), centered on room
+pub fn build_grid_planes(ctx: &RMAContext, bounds: &Aabb) -> Vec<Box<dyn Object>> {
+    if !bounds.is_valid() {
+        return Vec::new();
+    }
+
+    let padded = bounds.padded(0.2); // 20% padding
+    let size = padded.size();
+    let center = padded.center();
+
+    // Use the maximum dimension so each plane is the same size (square)
+    let max_size = size.x.max(size.y).max(size.z);
+    let half = max_size / 2.0;
+    let grid_spacing = max_size / 10.0;
+
+    // Grid color - subtle gray
+    let grid_color = Srgba {
+        r: 80,
+        g: 80,
+        b: 80,
+        a: 255,
+    };
+
+    let mut lines = Vec::new();
+    let mut add_line = |start: Vector3<f32>, end: Vector3<f32>| {
+        lines.push(DebugLine {
+            start,
+            end,
+            color: grid_color,
+        });
+    };
+
+    // Cube bounds centered on the room
+    let min_x = center.x - half;
+    let min_y = center.y - half;
+    let min_z = center.z - half;
+
+    // XY plane (at min Z) - square grid centered
+    let z = min_z;
+    let mut t = 0.0;
+    while t <= max_size {
+        add_line(
+            vec3(min_x + t, min_y, z),
+            vec3(min_x + t, min_y + max_size, z),
+        );
+        add_line(
+            vec3(min_x, min_y + t, z),
+            vec3(min_x + max_size, min_y + t, z),
+        );
+        t += grid_spacing;
+    }
+
+    // XZ plane (at min Y) - square grid centered
+    let y = min_y;
+    let mut t = 0.0;
+    while t <= max_size {
+        add_line(
+            vec3(min_x + t, y, min_z),
+            vec3(min_x + t, y, min_z + max_size),
+        );
+        add_line(
+            vec3(min_x, y, min_z + t),
+            vec3(min_x + max_size, y, min_z + t),
+        );
+        t += grid_spacing;
+    }
+
+    // YZ plane (at min X) - square grid centered
+    let x = min_x;
+    let mut t = 0.0;
+    while t <= max_size {
+        add_line(
+            vec3(x, min_y + t, min_z),
+            vec3(x, min_y + t, min_z + max_size),
+        );
+        add_line(
+            vec3(x, min_y, min_z + t),
+            vec3(x, min_y + max_size, min_z + t),
+        );
+        t += grid_spacing;
+    }
+
+    let mut debug_lines = DebugLines::new(ctx.context, 1.0);
+    debug_lines.set_lines(lines);
+
+    vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]
 }
