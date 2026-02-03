@@ -243,7 +243,7 @@ fn main() -> anyhow::Result<()> {
         base: URoomGeneratorBase {
             bounds: 20000.0,
             can_only_be_used_once: false,
-            mirror_support: ERoomMirroringSupport::MirrorAroundX,
+            mirror_support: ERoomMirroringSupport::NotAllowed,
             room_tags: FGameplayTagContainer(BTreeSet::new()),
         },
         room_features,

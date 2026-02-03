@@ -160,6 +160,7 @@ fn line_segment_sdf(a: &FRoomLinePoint, b: &FRoomLinePoint, p: &Point3<f64>) -> 
     let r_h = (a.h_range as f64 * (1.0 - t) + b.h_range as f64 * t).max(0.01);
     let r_v = (a.v_range as f64 * (1.0 - t) + b.v_range as f64 * t).max(0.01);
     let floor_d = a.floor_depth as f64 * (1.0 - t) + b.floor_depth as f64 * t;
+    let ceiling_h = a.cieling_height as f64 * (1.0 - t) + b.cieling_height as f64 * t;
     let floor_angle = a.floor_angle as f64 * (1.0 - t) + b.floor_angle as f64 * t;
 
     // Point on the segment axis
@@ -198,8 +199,12 @@ fn line_segment_sdf(a: &FRoomLinePoint, b: &FRoomLinePoint, p: &Point3<f64>) -> 
     let floor_z = segment_point.z + floor_d + angle_offset;
     let floor_dist = floor_z - p.z;
 
-    // Max combines the SDFs (intersection: point must be inside ellipsoid AND above floor)
-    ellipsoid_dist.max(floor_dist)
+    // Apply ceiling constraint (flat plane at ceiling_h above segment)
+    let ceiling_z = segment_point.z + ceiling_h;
+    let ceiling_dist = p.z - ceiling_z;
+
+    // Max combines the SDFs (intersection: inside ellipsoid AND above floor AND below ceiling)
+    ellipsoid_dist.max(floor_dist).max(ceiling_dist)
 }
 
 /// SDF for a single pillar segment (capsule/sphere-swept line)
