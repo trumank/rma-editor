@@ -203,7 +203,9 @@ impl Viewer for Camera {
     }
 
     fn projection(&self) -> Mat4 {
-        cgmath::perspective(self.fov_y, self.viewport.aspect(), self.z_near, self.z_far)
+        let proj = cgmath::perspective(self.fov_y, self.viewport.aspect(), self.z_near, self.z_far);
+        // Flip x-axis to match Unreal Engine coordinate system
+        Mat4::from_nonuniform_scale(-1.0, 1.0, 1.0) * proj
     }
 
     fn viewport(&self) -> Viewport {
@@ -348,7 +350,7 @@ impl CameraControl {
         let (dx, dy) = (delta.0 as f32, delta.1 as f32);
         match state {
             CameraState::Orbit { yaw, pitch, .. } | CameraState::Fly { yaw, pitch, .. } => {
-                *yaw -= dx * self.sensitivity;
+                *yaw += dx * self.sensitivity;
                 *pitch = (*pitch - dy * self.sensitivity).clamp(-1.5, 1.5);
             }
         }
@@ -366,7 +368,7 @@ impl CameraControl {
         let forward = CameraState::forward_from_angles(*yaw, *pitch);
         let up = vec3(0.0, 0.0, 1.0);
         let right = forward.cross(up).normalize();
-        *target += right * (dx * speed) + up * (-dy * speed);
+        *target += right * (-dx * speed) + up * (-dy * speed);
     }
 
     fn handle_scroll(&mut self, state: &mut CameraState, delta_y: f32) {
@@ -406,10 +408,10 @@ impl CameraControl {
             movement -= forward;
         }
         if self.move_right {
-            movement += left;
+            movement -= left;
         }
         if self.move_left {
-            movement -= left;
+            movement += left;
         }
         if self.move_up {
             movement += up;

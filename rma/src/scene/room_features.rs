@@ -3,8 +3,8 @@
 //! This module provides 3D visualization and egui editors for RMA room features.
 
 use three_d::{
-    Angle, BoundingBox, CpuMaterial, CpuMesh, Gm, InnerSpace, Mat4, Mesh, Object, PhysicalMaterial,
-    Radians, Srgba, Vector3, egui, vec2, vec3,
+    Angle, CpuMaterial, CpuMesh, Gm, InnerSpace, Mat4, Mesh, Object, PhysicalMaterial, Radians,
+    Srgba, Vector3, egui, radians, vec2, vec3,
 };
 use transform_gizmo_egui::GizmoMode;
 
@@ -46,26 +46,69 @@ pub fn build_feature(
     match &feature.feature_type {
         URoomFeatureType::FloodFillBox(f) => {
             let position: Vector3<f32> = (&f.position).into();
-            let extends = &f.extends;
+            let ext = &f.extends;
+            let color = highlight_color.unwrap_or(Srgba::new_opaque(200, 0, 0));
 
-            let mut mesh = BoundingBox::new(ctx.context, CpuMesh::cube().compute_aabb());
-            mesh.set_transformation(
-                Mat4::from_translation(position)
-                    * Mat4::from_nonuniform_scale(extends.x, extends.y, extends.z),
-            );
+            // Build rotation matrix from FRotator (pitch, yaw, roll in degrees)
+            // Unreal uses left-handed coords, negate pitch to match
+            let roll = radians(f.rotation.roll.to_radians());
+            let pitch = radians((-f.rotation.pitch).to_radians());
+            let yaw = radians(f.rotation.yaw.to_radians());
+            let rot =
+                Mat4::from_angle_z(yaw) * Mat4::from_angle_y(pitch) * Mat4::from_angle_x(roll);
 
-            let material = if let Some(color) = highlight_color {
-                PhysicalMaterial::new_opaque(
-                    ctx.context,
-                    &CpuMaterial {
-                        albedo: color,
-                        ..Default::default()
-                    },
-                )
-            } else {
-                ctx.wireframe_material.clone()
-            };
-            vec![Box::new(Gm::new(mesh, material))]
+            // 8 corners of the box in local space
+            let corners_local = [
+                vec3(-ext.x, -ext.y, -ext.z),
+                vec3(ext.x, -ext.y, -ext.z),
+                vec3(ext.x, ext.y, -ext.z),
+                vec3(-ext.x, ext.y, -ext.z),
+                vec3(-ext.x, -ext.y, ext.z),
+                vec3(ext.x, -ext.y, ext.z),
+                vec3(ext.x, ext.y, ext.z),
+                vec3(-ext.x, ext.y, ext.z),
+            ];
+
+            // Transform corners to world space
+            let corners: Vec<Vector3<f32>> = corners_local
+                .iter()
+                .map(|c| {
+                    let rotated = rot * c.extend(1.0);
+                    vec3(rotated.x, rotated.y, rotated.z) + position
+                })
+                .collect();
+
+            // 12 edges of the box
+            let edges = [
+                // Bottom face
+                (0, 1),
+                (1, 2),
+                (2, 3),
+                (3, 0),
+                // Top face
+                (4, 5),
+                (5, 6),
+                (6, 7),
+                (7, 4),
+                // Vertical edges
+                (0, 4),
+                (1, 5),
+                (2, 6),
+                (3, 7),
+            ];
+
+            let lines: Vec<DebugLine> = edges
+                .iter()
+                .map(|&(a, b)| DebugLine {
+                    start: corners[a],
+                    end: corners[b],
+                    color,
+                })
+                .collect();
+
+            let mut debug_lines = DebugLines::new(ctx.context, 2.);
+            debug_lines.set_lines(lines);
+            vec![Box::new(Gm::new(debug_lines, DebugLineMaterial::new()))]
         }
 
         URoomFeatureType::FloodFillPillar(f) => {

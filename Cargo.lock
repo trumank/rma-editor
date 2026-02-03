@@ -297,9 +297,9 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bit-vec"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2c54ff287cfc0a34f38a6b832ea1bd8e448a330b3e40a50859e6488bee07f22"
+checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bit_field"
@@ -749,14 +749,16 @@ dependencies = [
 
 [[package]]
 name = "csgrs"
-version = "0.16.0"
+version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adc48db5a3542243eef9f444cc2fb1b70474fa3975c3ac93f86f81d0dd3b9109"
+checksum = "b004da954c4987881c668e0051f6c69a23d035b4b406eee539772db4d4944025"
 dependencies = [
  "chull",
  "contour_tracing",
  "core2",
+ "doc-image-embed",
  "dxf",
+ "either",
  "fast-surface-nets",
  "geo",
  "geo-buf",
@@ -764,11 +766,15 @@ dependencies = [
  "hershey",
  "image",
  "nalgebra",
+ "nom 7.1.3",
  "parry3d-f64",
  "rapier3d-f64",
+ "robust",
  "stl_io",
- "ttf-parser 0.11.0",
- "ttf-utils",
+ "svg",
+ "thiserror 2.0.18",
+ "ttf-parser 0.25.1",
+ "ttf-parser-utils",
 ]
 
 [[package]]
@@ -889,10 +895,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "doc-image-embed"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b1c7e5bbb92b417588a5e733e095416c27c06eedc051065cc955a0a8c8389d9"
+dependencies = [
+ "base64",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.114",
+]
+
+[[package]]
 name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
+
+[[package]]
+name = "downcast-rs"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "117240f60069e65410b3ae1bb213295bd828f707b5bec6596a1afc8793ce0cbc"
 
 [[package]]
 name = "dxf"
@@ -986,9 +1010,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.13.0"
+version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
 name = "emath"
@@ -1933,9 +1957,9 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.85"
+version = "0.3.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c942ebf8e95485ca0d52d97da7c5a2c387d0e7f0ba4c35e93bfcaee045955b3"
+checksum = "464a3709c7f55f1f721e5389aa6ea4e3bc6aba669353300af094b29ffbdde1d8"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
@@ -2128,9 +2152,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.6.4"
+version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
+checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
 name = "memmap2"
@@ -2725,28 +2749,27 @@ dependencies = [
 
 [[package]]
 name = "parry3d-f64"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8b2e297ab09d7c3b746e59c23f5bd44e235540424dcccbf28314db9ccf0938f"
+checksum = "ed9184cf88474deb3e5ec6c67a8c6fe51ee9572e8c476d44b7de643937a125c5"
 dependencies = [
  "approx 0.5.1",
  "arrayvec",
  "bitflags 2.10.0",
- "downcast-rs",
+ "downcast-rs 2.0.2",
  "either",
  "ena",
+ "hashbrown 0.15.5",
  "log",
  "nalgebra",
  "num-derive",
  "num-traits 0.2.19",
- "ordered-float 4.6.0",
+ "ordered-float 5.1.0",
  "rstar",
- "rustc-hash",
  "simba",
  "slab",
- "smallvec",
  "spade",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2959,26 +2982,26 @@ dependencies = [
 
 [[package]]
 name = "rapier3d-f64"
-version = "0.23.1"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edc3a0f6599561a675bc146df202a2d3a8c9c37e3509a91ddc7c81e36e384115"
+checksum = "75a10d0735644bdc60b54a573a1ba413bab4f4822ce403e4f637f4d0b3d54d6b"
 dependencies = [
  "approx 0.5.1",
  "arrayvec",
  "bit-vec",
  "bitflags 2.10.0",
  "crossbeam",
- "downcast-rs",
+ "downcast-rs 2.0.2",
  "log",
  "nalgebra",
  "num-derive",
  "num-traits 0.2.19",
- "ordered-float 4.6.0",
+ "ordered-float 5.1.0",
  "parry3d-f64",
  "profiling",
  "rustc-hash",
  "simba",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -3505,9 +3528,9 @@ dependencies = [
 
 [[package]]
 name = "slotmap"
-version = "1.0.6"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e08e261d0e8f5c43123b7adf3e4ca1690d655377ac93a03b2c9d3e98de1342"
+checksum = "bdd58c3c93c3d278ca835519292445cb4b0d4dc59ccfdf7ceadaab3f8aeb4038"
 dependencies = [
  "version_check",
 ]
@@ -3631,6 +3654,12 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "svg"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94afda9cd163c04f6bee8b4bf2501c91548deae308373c436f36aeff3cf3c4a3"
 
 [[package]]
 name = "syn"
@@ -3909,23 +3938,23 @@ dependencies = [
 
 [[package]]
 name = "ttf-parser"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3e7994fc4aed0ee366a4b0d01562c8a7cd5a5017088bceb6921b0c8c538f34e"
-
-[[package]]
-name = "ttf-parser"
 version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49d64318d8311fc2668e48b63969f4343e0a85c4a109aa8460d6672e364b8bd1"
 
 [[package]]
-name = "ttf-utils"
-version = "0.1.3"
+name = "ttf-parser"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ff12815494b93841cf044cc7793f0207d256ec6237a10fb6efcb4dd0b070d90"
+checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
+
+[[package]]
+name = "ttf-parser-utils"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff2ad77abd4b1ab08adbab7f399be4cc1ff6958421cafa86af75824d9179b5c0"
 dependencies = [
- "ttf-parser 0.11.0",
+ "ttf-parser 0.25.1",
 ]
 
 [[package]]
@@ -4112,9 +4141,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.108"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64024a30ec1e37399cf85a7ffefebdb72205ca1c972291c51512360d90bd8566"
+checksum = "0d759f433fa64a2d763d1340820e46e111a7a5ab75f993d1852d70b03dbb80fd"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -4125,9 +4154,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.108"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "008b239d9c740232e71bd39e8ef6429d27097518b6b30bdf9086833bd5b6d608"
+checksum = "48cb0d2638f8baedbc542ed444afc0644a29166f1595371af4fecf8ce1e7eeb3"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -4135,9 +4164,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.108"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5256bae2d58f54820e6490f9839c49780dff84c65aeab9e772f15d5f0e913a55"
+checksum = "cefb59d5cd5f92d9dcf80e4683949f15ca4b511f4ac0a6e14d4e1ac60c6ecd40"
 dependencies = [
  "bumpalo",
  "proc-macro2",
@@ -4148,9 +4177,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.108"
+version = "0.2.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f01b580c9ac74c8d8f0c0e4afb04eeef2acf145458e52c03845ee9cd23e3d12"
+checksum = "cbc538057e648b67f72a982e708d485b2efa771e1ac05fec311f9f63e5800db4"
 dependencies = [
  "unicode-ident",
 ]
@@ -4162,7 +4191,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f3b068c05a039c9f755f881dc50f01732214f5685e379829759088967c46715"
 dependencies = [
  "bitflags 1.3.2",
- "downcast-rs",
+ "downcast-rs 1.2.0",
  "libc",
  "nix 0.24.3",
  "scoped-tls",
@@ -4242,9 +4271,9 @@ dependencies = [
 
 [[package]]
 name = "web-sys"
-version = "0.3.85"
+version = "0.3.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "312e32e551d92129218ea9a2452120f4aabc03529ef03e4d0d82fb2780608598"
+checksum = "9b32828d774c412041098d182a8b38b16ea816958e07cf40eec2bc080ae137ac"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

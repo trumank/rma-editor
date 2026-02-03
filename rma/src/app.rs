@@ -96,7 +96,7 @@ fn build_csg_mesh_object(
         },
     );
     // One-sided mesh
-    material.render_states.cull = Cull::Front;
+    material.render_states.cull = Cull::Back;
 
     Some(Box::new(Gm::new(mesh, material)))
 }

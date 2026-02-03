@@ -5,13 +5,13 @@
 
 use std::collections::HashMap;
 
-use csgrs::csg::CSG;
 use csgrs::float_types::parry3d::na::Point3;
+use csgrs::mesh::Mesh;
 use three_d::{CpuMesh, Indices, Positions, Vector3, vec3};
 
 use super::room_features::Aabb;
 use crate::objects::{
-    FRandLinePoint, FRoomLinePoint, UFloodFillLine, UFloodFillPillar, URoomFeature,
+    FRandLinePoint, FRoomLinePoint, UFloodFillBox, UFloodFillLine, UFloodFillPillar, URoomFeature,
     URoomFeatureType, URoomGenerator,
 };
 
@@ -20,6 +20,7 @@ use crate::objects::{
 enum SegmentRef {
     Line { line_idx: usize, seg_idx: usize },
     Pillar { pillar_idx: usize, seg_idx: usize },
+    Box { box_idx: usize },
 }
 
 /// Spatial bins for accelerating SDF evaluation
@@ -257,6 +258,58 @@ fn pillar_segment_sdf(
     diff.coords.norm() - radius
 }
 
+/// SDF for a rotated box
+fn box_sdf(b: &UFloodFillBox, p: &Point3<f64>) -> f64 {
+    let center = Point3::new(
+        b.position.x as f64,
+        b.position.y as f64,
+        b.position.z as f64,
+    );
+    let half_extents = Point3::new(b.extends.x as f64, b.extends.y as f64, b.extends.z as f64);
+
+    // Build rotation matrix from FRotator (pitch, yaw, roll in degrees)
+    // Unreal uses left-handed coords, negate pitch to match
+    let roll = (b.rotation.roll as f64).to_radians();
+    let pitch = (-b.rotation.pitch as f64).to_radians();
+    let yaw = (b.rotation.yaw as f64).to_radians();
+
+    let (sr, cr) = roll.sin_cos();
+    let (sp, cp) = pitch.sin_cos();
+    let (sy, cy) = yaw.sin_cos();
+
+    // Rotation matrix: Rz(yaw) * Ry(pitch) * Rx(roll)
+    // We need the inverse (transpose) to transform the point into local space
+    let r00 = cy * cp;
+    let r01 = cy * sp * sr - sy * cr;
+    let r02 = cy * sp * cr + sy * sr;
+    let r10 = sy * cp;
+    let r11 = sy * sp * sr + cy * cr;
+    let r12 = sy * sp * cr - cy * sr;
+    let r20 = -sp;
+    let r21 = cp * sr;
+    let r22 = cp * cr;
+
+    // Transform point to local box space (translate then rotate by inverse)
+    let local_x = p.x - center.x;
+    let local_y = p.y - center.y;
+    let local_z = p.z - center.z;
+
+    // Apply inverse rotation (transpose of rotation matrix)
+    let qx = r00 * local_x + r10 * local_y + r20 * local_z;
+    let qy = r01 * local_x + r11 * local_y + r21 * local_z;
+    let qz = r02 * local_x + r12 * local_y + r22 * local_z;
+
+    // Standard axis-aligned box SDF in local space
+    let dx = qx.abs() - half_extents.x;
+    let dy = qy.abs() - half_extents.y;
+    let dz = qz.abs() - half_extents.z;
+
+    let outside = (dx.max(0.0).powi(2) + dy.max(0.0).powi(2) + dz.max(0.0).powi(2)).sqrt();
+    let inside = dx.max(dy).max(dz).min(0.0);
+
+    outside + inside
+}
+
 /// Compute the bounding box needed for CSG generation from visible mesh features
 fn compute_csg_bounds<V: VisibilityCheck>(room: &URoomGenerator, visibility: &V) -> Option<Aabb> {
     let mut aabb = Aabb::new();
@@ -279,9 +332,11 @@ fn compute_csg_bounds<V: VisibilityCheck>(room: &URoomGenerator, visibility: &V)
             match &feature.feature_type {
                 URoomFeatureType::FloodFillBox(f) => {
                     let pos: Vector3<f32> = vec3(f.position.x, f.position.y, f.position.z);
-                    let ext: Vector3<f32> = vec3(f.extends.x, f.extends.y, f.extends.z);
-                    aabb.expand_point(pos - ext);
-                    aabb.expand_point(pos + ext);
+                    let ext = &f.extends;
+                    // For rotated box, use the diagonal as a conservative bounding radius
+                    let diag = (ext.x * ext.x + ext.y * ext.y + ext.z * ext.z).sqrt();
+                    aabb.expand_point(pos - vec3(diag, diag, diag));
+                    aabb.expand_point(pos + vec3(diag, diag, diag));
                 }
                 URoomFeatureType::FloodFillPillar(f) => {
                     for point in &f.points {
@@ -391,11 +446,47 @@ fn collect_flood_fill_pillars<'a, V: VisibilityCheck>(
     pillars
 }
 
+/// Collect all visible FloodFillBox features from the room
+fn collect_flood_fill_boxes<'a, V: VisibilityCheck>(
+    features: &'a [URoomFeature],
+    visibility: &V,
+) -> Vec<&'a UFloodFillBox> {
+    let mut boxes = Vec::new();
+
+    fn collect_recursive<'a, V: VisibilityCheck>(
+        features: &'a [URoomFeature],
+        boxes: &mut Vec<&'a UFloodFillBox>,
+        visibility: &V,
+        path: &mut Vec<usize>,
+    ) {
+        path.push(0);
+        for (i, feature) in features.iter().enumerate() {
+            *path.last_mut().unwrap() = i;
+
+            // Skip invisible features
+            if !visibility.is_visible(path) {
+                continue;
+            }
+
+            if let URoomFeatureType::FloodFillBox(b) = &feature.feature_type {
+                boxes.push(b);
+            }
+            collect_recursive(&feature.children, boxes, visibility, path);
+        }
+        path.pop();
+    }
+
+    let mut path = Vec::new();
+    collect_recursive(features, &mut boxes, visibility, &mut path);
+    boxes
+}
+
 /// Build spatial bins by sampling each segment's SDF on a coarse grid
 fn build_spatial_bins(
     bounds: &Aabb,
     lines: &[&UFloodFillLine],
     pillars: &[&UFloodFillPillar],
+    boxes: &[&UFloodFillBox],
 ) -> SpatialBins {
     const BIN_COUNT: usize = 20;
     let mut bins = SpatialBins::new(bounds, BIN_COUNT);
@@ -437,6 +528,16 @@ fn build_spatial_bins(
         }
     }
 
+    // Sample each box
+    for (box_idx, b) in boxes.iter().enumerate() {
+        for bin_idx in 0..total_bins {
+            let center = bins.bin_center(bin_idx);
+            if box_sdf(b, &center).abs() < threshold {
+                bins.bins[bin_idx].push(SegmentRef::Box { box_idx });
+            }
+        }
+    }
+
     bins
 }
 
@@ -444,17 +545,18 @@ fn build_spatial_bins(
 pub fn build_csg_from_features<V: VisibilityCheck>(
     room: &URoomGenerator,
     visibility: &V,
-) -> Option<CSG<()>> {
+) -> Option<Mesh<()>> {
     let bounds = compute_csg_bounds(room, visibility)?;
     let lines = collect_flood_fill_lines(&room.room_features, visibility);
     let pillars = collect_flood_fill_pillars(&room.room_features, visibility);
+    let boxes = collect_flood_fill_boxes(&room.room_features, visibility);
 
-    if lines.is_empty() && pillars.is_empty() {
+    if lines.is_empty() && pillars.is_empty() && boxes.is_empty() {
         return None;
     }
 
     // Build spatial acceleration structure
-    let bins = build_spatial_bins(&bounds, &lines, &pillars);
+    let bins = build_spatial_bins(&bounds, &lines, &pillars, &boxes);
 
     // Precompute pillar range scales
     let pillar_range_scales: Vec<f64> = pillars
@@ -465,12 +567,13 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
     // Create combined SDF using spatial bins for acceleration:
     // - Lines carve (create cave space): union (min) of all line SDFs
     // - Pillars fill material: subtract from cave using max(cave_sdf, -pillar_sdf)
+    // - Boxes can either carve or fill depending on is_carver flag
     let combined_sdf = |p: &Point3<f64>| {
         let bin_idx = bins.point_to_bin(p);
         let segments = &bins.bins[bin_idx];
 
         let mut cave_dist = f64::INFINITY;
-        let mut pillar_dist = f64::INFINITY;
+        let mut fill_dist = f64::INFINITY;
 
         for seg in segments {
             match *seg {
@@ -488,27 +591,38 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
                     let a = &pillar.points[seg_idx];
                     let b = &pillar.points[seg_idx + 1];
                     let range_scale = pillar_range_scales[pillar_idx];
-                    pillar_dist = pillar_dist.min(pillar_segment_sdf(a, b, range_scale, p));
+                    fill_dist = fill_dist.min(pillar_segment_sdf(a, b, range_scale, p));
+                }
+                SegmentRef::Box { box_idx } => {
+                    let b = boxes[box_idx];
+                    let dist = box_sdf(b, p);
+                    if b.is_carver {
+                        cave_dist = cave_dist.min(dist);
+                    } else {
+                        fill_dist = fill_dist.min(dist);
+                    }
                 }
             }
         }
 
-        // Subtract pillars from cave: max(cave, -pillar)
-        if pillar_dist < f64::INFINITY {
-            cave_dist.max(-pillar_dist)
+        // Subtract fill from cave: max(cave, -fill)
+        if fill_dist < f64::INFINITY {
+            cave_dist.max(-fill_dist)
         } else {
             cave_dist
         }
     };
 
-    // Calculate grid resolution based on bounds size
+    // Calculate grid resolution proportional to each dimension
     let size = bounds.size();
-    let max_dim = size.x.max(size.y).max(size.z);
-    let resolution = (max_dim / 50.0) as usize;
+    let cell_size = 50.0;
+    let res_x = (size.x / cell_size).ceil().max(1.0) as usize;
+    let res_y = (size.y / cell_size).ceil().max(1.0) as usize;
+    let res_z = (size.z / cell_size).ceil().max(1.0) as usize;
 
-    let csg = CSG::<()>::sdf(
+    let csg = Mesh::<()>::sdf(
         combined_sdf,
-        (resolution, resolution, resolution),
+        (res_x, res_y, res_z),
         Point3::new(
             bounds.min.x as f64,
             bounds.min.y as f64,
@@ -523,12 +637,12 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
         None,
     );
 
-    Some(csg.tessellate())
+    Some(csg.triangulate())
 }
 
 /// Convert a tessellated CSG to a three-d CpuMesh
 /// Uses standard winding so cave interior is visible from outside (one-sided mesh)
-pub fn csg_to_three_d_mesh(csg: &CSG<()>) -> CpuMesh {
+pub fn csg_to_three_d_mesh(csg: &Mesh<()>) -> CpuMesh {
     let polygons = &csg.polygons;
 
     let mut positions = Vec::new();
@@ -543,14 +657,14 @@ pub fn csg_to_three_d_mesh(csg: &CSG<()>) -> CpuMesh {
             continue;
         }
 
-        // Push positions and normals (standard orientation for viewing from outside)
+        // Use plane normal for flat shading
+        let n = poly.plane.normal();
+        let face_normal = vec3(n.x as f32, n.y as f32, n.z as f32);
+
+        // Push positions with flat face normal for all vertices
         for v in &poly.vertices {
             positions.push(vec3(v.pos.x as f32, v.pos.y as f32, v.pos.z as f32));
-            normals.push(vec3(
-                v.normal.x as f32,
-                v.normal.y as f32,
-                v.normal.z as f32,
-            ));
+            normals.push(face_normal);
         }
 
         // Standard winding order
