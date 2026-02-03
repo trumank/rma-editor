@@ -504,7 +504,7 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
     // Calculate grid resolution based on bounds size
     let size = bounds.size();
     let max_dim = size.x.max(size.y).max(size.z);
-    let resolution = ((max_dim / 50.0) as usize).clamp(50, 200);
+    let resolution = (max_dim / 50.0) as usize;
 
     let csg = CSG::<()>::sdf(
         combined_sdf,
