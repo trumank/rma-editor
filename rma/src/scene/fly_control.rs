@@ -300,6 +300,11 @@ impl CameraControl {
                     }
                 }
                 Event::RawMouseMotion { delta, handled, .. } => {
+                    // Discard large deltas (garbage from OS on drag init)
+                    let magnitude = (delta.0 * delta.0 + delta.1 * delta.1).sqrt();
+                    if magnitude > 200.0 {
+                        continue;
+                    }
                     if self.left_pressed {
                         self.handle_look(state, *delta);
                         if !*handled {
