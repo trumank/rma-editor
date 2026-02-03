@@ -14,6 +14,7 @@ use crate::objects::*;
 
 // Wireframe visualization constants
 const CIRCLE_SEGMENTS: usize = 40;
+const PILLAR_SEGMENTS: usize = 4;
 const ELLIPSOID_H_BANDS: usize = 2;
 const ELLIPSOID_V_BANDS: usize = 2;
 const CONNECTOR_BANDS: usize = 2;
@@ -71,14 +72,128 @@ pub fn build_feature(
             let mut lines = Vec::new();
             let color = highlight_color.unwrap_or(Srgba::new_opaque(0, 200, 0));
 
-            let points: Vec<Vector3<f32>> = f.points.iter().map(|p| (&p.location).into()).collect();
-
-            for pair in points.windows(2) {
+            let mut add_line = |p1: Vector3<f32>, p2: Vector3<f32>| {
                 lines.push(DebugLine {
-                    start: pair[0],
-                    end: pair[1],
+                    start: p1,
+                    end: p2,
                     color,
                 });
+            };
+
+            let range_scale = (f.range_scale.min + f.range_scale.max) / 2.;
+
+            // Collect points data (location and max range as radius)
+            let points_data: Vec<_> = f
+                .points
+                .iter()
+                .map(|p| {
+                    (
+                        Vector3::from(&p.location),
+                        p.range.max.max(p.range.min) * range_scale,
+                    )
+                })
+                .collect();
+
+            // Connector bands between points
+            for pair in points_data.windows(2) {
+                let (p1, r1) = pair[0];
+                let (p2, r2) = pair[1];
+
+                // Direction from p1 to p2
+                let dir = p2 - p1;
+                let len = dir.magnitude();
+                if len < 0.001 {
+                    continue;
+                }
+                let dir_norm = dir / len;
+
+                // Build a perpendicular basis
+                let up = if dir_norm.z.abs() < 0.9 {
+                    vec3(0., 0., 1.)
+                } else {
+                    vec3(1., 0., 0.)
+                };
+                let perp1 = dir_norm.cross(up).normalize();
+                let perp2 = dir_norm.cross(perp1).normalize();
+
+                // Draw connector lines around the circumference
+                let segments = PILLAR_SEGMENTS;
+                for i in 0..segments {
+                    let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+                    let (cos_a, sin_a) = (angle.cos(), angle.sin());
+                    let offset1 = perp1 * cos_a + perp2 * sin_a;
+
+                    add_line(p1 + offset1 * r1, p2 + offset1 * r2);
+                }
+            }
+
+            // Helper to draw a circle given center, radius, and two perpendicular axes
+            let mut draw_circle =
+                |center: Vector3<f32>, radius: f32, axis1: Vector3<f32>, axis2: Vector3<f32>| {
+                    let segments = CIRCLE_SEGMENTS;
+                    let mut iter = (0..segments + 1)
+                        .map(|j| {
+                            let angle = 2.0 * std::f32::consts::PI * j as f32 / segments as f32;
+                            (angle.cos(), angle.sin())
+                        })
+                        .peekable();
+                    while let (Some(a), Some(b)) = (iter.next(), iter.peek()) {
+                        add_line(
+                            center + (axis1 * a.0 + axis2 * a.1) * radius,
+                            center + (axis1 * b.0 + axis2 * b.1) * radius,
+                        );
+                    }
+                };
+
+            let perp_basis = |dir: Vector3<f32>| -> (Vector3<f32>, Vector3<f32>) {
+                let up = if dir.z.abs() < 0.9 {
+                    vec3(0., 0., 1.)
+                } else {
+                    vec3(1., 0., 0.)
+                };
+                let p1 = dir.cross(up).normalize();
+                let p2 = dir.cross(p1).normalize();
+                (p1, p2)
+            };
+
+            // Each segment draws end cap circles at both ends
+            for pair in points_data.windows(2) {
+                let (p1, r1) = pair[0];
+                let (p2, r2) = pair[1];
+                let dir = (p2 - p1).normalize();
+                let (perp1, perp2) = perp_basis(dir);
+                draw_circle(p1, r1, perp1, perp2);
+                draw_circle(p2, r2, perp1, perp2);
+            }
+
+            // Each point draws additional circles
+            for (i, (loc, r)) in points_data.iter().enumerate() {
+                let is_endpoint = points_data.len() == 1 || i == 0 || i == points_data.len() - 1;
+
+                let dir = if points_data.len() == 1 {
+                    vec3(0., 0., 1.)
+                } else if i == 0 {
+                    (points_data[1].0 - *loc).normalize()
+                } else {
+                    (*loc - points_data[i - 1].0).normalize()
+                };
+
+                let (perp1, perp2) = perp_basis(dir);
+
+                if is_endpoint {
+                    // Endpoints: two circles through the axis
+                    draw_circle(*loc, *r, dir, perp1);
+                    draw_circle(*loc, *r, dir, perp2);
+                } else {
+                    // Joint: one circle in the plane formed by both segments
+                    let d2 = (points_data[i + 1].0 - *loc).normalize();
+                    let normal = dir.cross(d2);
+                    if normal.magnitude() > 0.001 {
+                        draw_circle(*loc, *r, dir, normal.cross(dir).normalize());
+                    } else {
+                        draw_circle(*loc, *r, dir, perp1);
+                    }
+                }
             }
 
             let mut debug_lines = DebugLines::new(ctx.context, 2.);
