@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 three-d = { git = "https://github.com/trumank/three-d", features = ["egui-gui"] }
-csgrs = "0.20"
+csgrs = { git = "https://github.com/trumank/csgrs", features = ["parallel"], branch = "parallel-sdf" }
 anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1.0.203", features = ["derive"] }

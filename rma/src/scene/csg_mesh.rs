@@ -25,7 +25,7 @@ enum SegmentRef {
 
 /// Spatial bins for accelerating SDF evaluation
 struct SpatialBins {
-    cell_size: f64,
+    inv_cell_size: f64,
     origin: Point3<f64>,
     dims: (usize, usize, usize),
     bins: Vec<Vec<SegmentRef>>,
@@ -36,17 +36,18 @@ impl SpatialBins {
         let size = bounds.size();
         let max_dim = size.x.max(size.y).max(size.z) as f64;
         let cell_size = max_dim / bin_count as f64;
+        let inv_cell_size = 1.0 / cell_size;
 
         let dims = (
-            ((size.x as f64 / cell_size).ceil() as usize).max(1),
-            ((size.y as f64 / cell_size).ceil() as usize).max(1),
-            ((size.z as f64 / cell_size).ceil() as usize).max(1),
+            ((size.x as f64 * inv_cell_size).ceil() as usize).max(1),
+            ((size.y as f64 * inv_cell_size).ceil() as usize).max(1),
+            ((size.z as f64 * inv_cell_size).ceil() as usize).max(1),
         );
 
         let total_bins = dims.0 * dims.1 * dims.2;
 
         SpatialBins {
-            cell_size,
+            inv_cell_size,
             origin: Point3::new(
                 bounds.min.x as f64,
                 bounds.min.y as f64,
@@ -58,9 +59,9 @@ impl SpatialBins {
     }
 
     fn point_to_bin(&self, p: &Point3<f64>) -> usize {
-        let x = ((p.x - self.origin.x) / self.cell_size) as usize;
-        let y = ((p.y - self.origin.y) / self.cell_size) as usize;
-        let z = ((p.z - self.origin.z) / self.cell_size) as usize;
+        let x = ((p.x - self.origin.x) * self.inv_cell_size) as usize;
+        let y = ((p.y - self.origin.y) * self.inv_cell_size) as usize;
+        let z = ((p.z - self.origin.z) * self.inv_cell_size) as usize;
 
         let x = x.min(self.dims.0 - 1);
         let y = y.min(self.dims.1 - 1);
@@ -70,14 +71,15 @@ impl SpatialBins {
     }
 
     fn bin_center(&self, bin_idx: usize) -> Point3<f64> {
+        let cell_size = 1.0 / self.inv_cell_size;
         let x = bin_idx % self.dims.0;
         let y = (bin_idx / self.dims.0) % self.dims.1;
         let z = bin_idx / (self.dims.0 * self.dims.1);
 
         Point3::new(
-            self.origin.x + (x as f64 + 0.5) * self.cell_size,
-            self.origin.y + (y as f64 + 0.5) * self.cell_size,
-            self.origin.z + (z as f64 + 0.5) * self.cell_size,
+            self.origin.x + (x as f64 + 0.5) * cell_size,
+            self.origin.y + (y as f64 + 0.5) * cell_size,
+            self.origin.z + (z as f64 + 0.5) * cell_size,
         )
     }
 
@@ -88,7 +90,7 @@ impl SpatialBins {
     /// Threshold for considering a segment as affecting a bin
     fn threshold(&self) -> f64 {
         // Cell diagonal ensures we catch segments that partially overlap
-        self.cell_size * 1.8 // ~sqrt(3) ≈ 1.73
+        1.8 / self.inv_cell_size // ~sqrt(3) ≈ 1.73
     }
 }
 

@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     let path = std::env::args()
         .nth(1)
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("RMA_Motherlode_Center_03.json"));
+        .unwrap_or_else(|| PathBuf::from("assets/rma/RMA_Motherlode_Center_03.uasset"));
 
     println!("Loading room from: {}", path.display());
     let load_start = Instant::now();
