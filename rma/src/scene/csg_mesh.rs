@@ -15,6 +15,82 @@ use crate::objects::{
     URoomFeatureType, URoomGenerator,
 };
 
+/// Reference to a segment within a primitive
+#[derive(Clone, Copy)]
+enum SegmentRef {
+    Line { line_idx: usize, seg_idx: usize },
+    Pillar { pillar_idx: usize, seg_idx: usize },
+}
+
+/// Spatial bins for accelerating SDF evaluation
+struct SpatialBins {
+    cell_size: f64,
+    origin: Point3<f64>,
+    dims: (usize, usize, usize),
+    bins: Vec<Vec<SegmentRef>>,
+}
+
+impl SpatialBins {
+    fn new(bounds: &Aabb, bin_count: usize) -> Self {
+        let size = bounds.size();
+        let max_dim = size.x.max(size.y).max(size.z) as f64;
+        let cell_size = max_dim / bin_count as f64;
+
+        let dims = (
+            ((size.x as f64 / cell_size).ceil() as usize).max(1),
+            ((size.y as f64 / cell_size).ceil() as usize).max(1),
+            ((size.z as f64 / cell_size).ceil() as usize).max(1),
+        );
+
+        let total_bins = dims.0 * dims.1 * dims.2;
+
+        SpatialBins {
+            cell_size,
+            origin: Point3::new(
+                bounds.min.x as f64,
+                bounds.min.y as f64,
+                bounds.min.z as f64,
+            ),
+            dims,
+            bins: vec![Vec::new(); total_bins],
+        }
+    }
+
+    fn point_to_bin(&self, p: &Point3<f64>) -> usize {
+        let x = ((p.x - self.origin.x) / self.cell_size) as usize;
+        let y = ((p.y - self.origin.y) / self.cell_size) as usize;
+        let z = ((p.z - self.origin.z) / self.cell_size) as usize;
+
+        let x = x.min(self.dims.0 - 1);
+        let y = y.min(self.dims.1 - 1);
+        let z = z.min(self.dims.2 - 1);
+
+        x + y * self.dims.0 + z * self.dims.0 * self.dims.1
+    }
+
+    fn bin_center(&self, bin_idx: usize) -> Point3<f64> {
+        let x = bin_idx % self.dims.0;
+        let y = (bin_idx / self.dims.0) % self.dims.1;
+        let z = bin_idx / (self.dims.0 * self.dims.1);
+
+        Point3::new(
+            self.origin.x + (x as f64 + 0.5) * self.cell_size,
+            self.origin.y + (y as f64 + 0.5) * self.cell_size,
+            self.origin.z + (z as f64 + 0.5) * self.cell_size,
+        )
+    }
+
+    fn total_bins(&self) -> usize {
+        self.dims.0 * self.dims.1 * self.dims.2
+    }
+
+    /// Threshold for considering a segment as affecting a bin
+    fn threshold(&self) -> f64 {
+        // Cell diagonal ensures we catch segments that partially overlap
+        self.cell_size * 1.8 // ~sqrt(3) ≈ 1.73
+    }
+}
+
 /// Trait for checking feature visibility
 pub trait VisibilityCheck {
     fn is_visible(&self, path: &[usize]) -> bool;
@@ -34,188 +110,151 @@ pub trait HasVisible {
     fn visible(&self) -> bool;
 }
 
-/// SDF for a FloodFillLine - creates an ellipsoid tunnel along a polyline
-fn flood_fill_line_sdf(line: &UFloodFillLine) -> impl Fn(&Point3<f64>) -> f64 + '_ {
-    move |p: &Point3<f64>| {
-        if line.points.is_empty() {
-            return f64::INFINITY;
-        }
+/// SDF for a single line segment (ellipsoid tunnel)
+fn line_segment_sdf(a: &FRoomLinePoint, b: &FRoomLinePoint, p: &Point3<f64>) -> f64 {
+    let a_point = Point3::new(
+        a.location.x as f64,
+        a.location.y as f64,
+        a.location.z as f64,
+    );
+    let b_point = Point3::new(
+        b.location.x as f64,
+        b.location.y as f64,
+        b.location.z as f64,
+    );
 
-        // Helper function for ellipsoid segment between two points
-        // Uses full 3D projection onto segment, with vertically-oriented ellipsoid cross-sections
-        let sd_ellipsoid_segment = |p: &Point3<f64>, a: &FRoomLinePoint, b: &FRoomLinePoint| {
-            let a_point = Point3::new(
-                a.location.x as f64,
-                a.location.y as f64,
-                a.location.z as f64,
-            );
-            let b_point = Point3::new(
-                b.location.x as f64,
-                b.location.y as f64,
-                b.location.z as f64,
-            );
+    // Scale space for projection to account for anisotropic ellipsoid
+    let avg_r_h = ((a.h_range + b.h_range) as f64 / 2.0).max(0.01);
+    let avg_r_v = ((a.v_range + b.v_range) as f64 / 2.0).max(0.01);
 
-            // Scale space for projection to account for anisotropic ellipsoid
-            // Use average of endpoint radii for consistent scaling
-            let avg_r_h = ((a.h_range + b.h_range) as f64 / 2.0).max(0.01);
-            let avg_r_v = ((a.v_range + b.v_range) as f64 / 2.0).max(0.01);
+    // Transform into normalized space where ellipsoid is more spherical
+    let a_scaled = Point3::new(
+        a_point.x / avg_r_h,
+        a_point.y / avg_r_h,
+        a_point.z / avg_r_v,
+    );
+    let b_scaled = Point3::new(
+        b_point.x / avg_r_h,
+        b_point.y / avg_r_h,
+        b_point.z / avg_r_v,
+    );
+    let p_scaled = Point3::new(p.x / avg_r_h, p.y / avg_r_h, p.z / avg_r_v);
 
-            // Transform into normalized space where ellipsoid is more spherical
-            // We scale XY by 1/r_h and Z by 1/r_v
-            let a_scaled = Point3::new(
-                a_point.x / avg_r_h,
-                a_point.y / avg_r_h,
-                a_point.z / avg_r_v,
-            );
-            let b_scaled = Point3::new(
-                b_point.x / avg_r_h,
-                b_point.y / avg_r_h,
-                b_point.z / avg_r_v,
-            );
-            let p_scaled = Point3::new(p.x / avg_r_h, p.y / avg_r_h, p.z / avg_r_v);
+    // Project in scaled space for correct anisotropic handling
+    let ba_scaled = b_scaled - a_scaled;
+    let pa_scaled = p_scaled - a_scaled;
+    let ba_len_sq = ba_scaled.dot(&ba_scaled);
 
-            // Project in scaled space for correct anisotropic handling
-            let ba_scaled = b_scaled - a_scaled;
-            let pa_scaled = p_scaled - a_scaled;
-            let ba_len_sq = ba_scaled.dot(&ba_scaled);
+    let h = if ba_len_sq > 1e-12 {
+        pa_scaled.dot(&ba_scaled) / ba_len_sq
+    } else {
+        0.5
+    };
+    let t = h.clamp(0.0, 1.0);
 
-            let h = if ba_len_sq > 1e-12 {
-                pa_scaled.dot(&ba_scaled) / ba_len_sq
-            } else {
-                0.5
-            };
-            let t = h.clamp(0.0, 1.0);
+    // Segment direction in original space (needed for floor angle calculation)
+    let ba = b_point - a_point;
 
-            // Segment direction in original space (needed for floor angle calculation)
-            let ba = b_point - a_point;
+    // Interpolate all parameters
+    let r_h = (a.h_range as f64 * (1.0 - t) + b.h_range as f64 * t).max(0.01);
+    let r_v = (a.v_range as f64 * (1.0 - t) + b.v_range as f64 * t).max(0.01);
+    let floor_d = a.floor_depth as f64 * (1.0 - t) + b.floor_depth as f64 * t;
+    let floor_angle = a.floor_angle as f64 * (1.0 - t) + b.floor_angle as f64 * t;
 
-            // Interpolate all parameters
-            let r_h = (a.h_range as f64 * (1.0 - t) + b.h_range as f64 * t).max(0.01);
-            let r_v = (a.v_range as f64 * (1.0 - t) + b.v_range as f64 * t).max(0.01);
-            let floor_d = a.floor_depth as f64 * (1.0 - t) + b.floor_depth as f64 * t;
-            let floor_angle = a.floor_angle as f64 * (1.0 - t) + b.floor_angle as f64 * t;
+    // Point on the segment axis
+    let segment_point = a_point + ba * t;
+    let offset = p - segment_point;
 
-            // Point on the segment axis
-            let segment_point = a_point + ba * t;
-            let offset = p - segment_point;
+    // Calculate perpendicular direction (right vector) for floor angle
+    let horizontal_dir_len = (ba.x * ba.x + ba.y * ba.y).sqrt();
+    let (right_x, right_y) = if horizontal_dir_len > 1e-6 {
+        (-ba.y / horizontal_dir_len, ba.x / horizontal_dir_len)
+    } else {
+        (1.0, 0.0)
+    };
+    let perp_dist = offset.x * right_x + offset.y * right_y;
 
-            // Calculate perpendicular direction (right vector) for floor angle
-            // This is perpendicular to the segment direction in the XY plane
-            let horizontal_dir_len = (ba.x * ba.x + ba.y * ba.y).sqrt();
-            let (right_x, right_y) = if horizontal_dir_len > 1e-6 {
-                (-ba.y / horizontal_dir_len, ba.x / horizontal_dir_len)
-            } else {
-                (1.0, 0.0)
-            };
-            let perp_dist = offset.x * right_x + offset.y * right_y;
+    // Ellipsoid SDF with vertically-oriented radii: (r_h, r_h, r_v)
+    let qx = offset.x / r_h;
+    let qy = offset.y / r_h;
+    let qz = offset.z / r_v;
+    let k0 = (qx * qx + qy * qy + qz * qz).sqrt();
 
-            // Ellipsoid SDF with vertically-oriented radii: (r_h, r_h, r_v)
-            let qx = offset.x / r_h;
-            let qy = offset.y / r_h;
-            let qz = offset.z / r_v;
-            let k0 = (qx * qx + qy * qy + qz * qz).sqrt();
+    let q2x = offset.x / (r_h * r_h);
+    let q2y = offset.y / (r_h * r_h);
+    let q2z = offset.z / (r_v * r_v);
+    let k1 = (q2x * q2x + q2y * q2y + q2z * q2z).sqrt();
 
-            let q2x = offset.x / (r_h * r_h);
-            let q2y = offset.y / (r_h * r_h);
-            let q2z = offset.z / (r_v * r_v);
-            let k1 = (q2x * q2x + q2y * q2y + q2z * q2z).sqrt();
+    let ellipsoid_dist = if k1 > 1e-10 {
+        k0 * (k0 - 1.0) / k1
+    } else {
+        f64::INFINITY
+    };
 
-            let ellipsoid_dist = if k1 > 1e-10 {
-                k0 * (k0 - 1.0) / k1
-            } else {
-                f64::INFINITY
-            };
+    // Apply floor constraint with angle (tilted plane)
+    let angle_rad = floor_angle.to_radians();
+    let angle_offset = -angle_rad.sin() * perp_dist;
+    let floor_z = segment_point.z + floor_d + angle_offset;
+    let floor_dist = floor_z - p.z;
 
-            // Apply floor constraint with angle (tilted plane)
-            let angle_rad = floor_angle.to_radians();
-            let angle_offset = -angle_rad.sin() * perp_dist;
-            let floor_z = segment_point.z + floor_d + angle_offset;
-            let floor_dist = floor_z - p.z;
-
-            // Max combines the SDFs (intersection: point must be inside ellipsoid AND above floor)
-            ellipsoid_dist.max(floor_dist)
-        };
-
-        let mut min = f64::INFINITY;
-
-        for pair in line.points.windows(2) {
-            min = min.min(sd_ellipsoid_segment(p, &pair[0], &pair[1]));
-        }
-
-        min
-    }
+    // Max combines the SDFs (intersection: point must be inside ellipsoid AND above floor)
+    ellipsoid_dist.max(floor_dist)
 }
 
-/// SDF for a FloodFillPillar - creates a capsule/pill shape along a polyline
-/// Pillars fill material (opposite of carving), so this SDF is used for subtraction
-fn flood_fill_pillar_sdf(pillar: &UFloodFillPillar) -> impl Fn(&Point3<f64>) -> f64 + '_ {
-    // Use average of min/max for deterministic scale
-    let range_scale = ((pillar.range_scale.min + pillar.range_scale.max) * 0.5) as f64;
+/// SDF for a single pillar segment (capsule/sphere-swept line)
+fn pillar_segment_sdf(
+    a: &FRandLinePoint,
+    b: &FRandLinePoint,
+    range_scale: f64,
+    p: &Point3<f64>,
+) -> f64 {
+    let a_point = Point3::new(
+        a.location.x as f64,
+        a.location.y as f64,
+        a.location.z as f64,
+    );
+    let b_point = Point3::new(
+        b.location.x as f64,
+        b.location.y as f64,
+        b.location.z as f64,
+    );
+    // Use average of min/max for deterministic radius, apply range_scale
+    let a_radius = ((a.range.min + a.range.max) * 0.5) as f64 * range_scale;
+    let b_radius = ((b.range.min + b.range.max) * 0.5) as f64 * range_scale;
 
-    move |p: &Point3<f64>| {
-        if pillar.points.is_empty() {
-            return f64::INFINITY;
-        }
+    // Vector from a to b
+    let ab = Point3::new(
+        b_point.x - a_point.x,
+        b_point.y - a_point.y,
+        b_point.z - a_point.z,
+    );
+    // Vector from a to p
+    let ap = Point3::new(p.x - a_point.x, p.y - a_point.y, p.z - a_point.z);
 
-        // SDF for a capsule segment (sphere-swept line) with varying radius
-        let sd_capsule_segment = |p: &Point3<f64>, a: &FRandLinePoint, b: &FRandLinePoint| {
-            let a_point = Point3::new(
-                a.location.x as f64,
-                a.location.y as f64,
-                a.location.z as f64,
-            );
-            let b_point = Point3::new(
-                b.location.x as f64,
-                b.location.y as f64,
-                b.location.z as f64,
-            );
-            // Use average of min/max for deterministic radius, apply range_scale
-            let a_radius = ((a.range.min + a.range.max) * 0.5) as f64 * range_scale;
-            let b_radius = ((b.range.min + b.range.max) * 0.5) as f64 * range_scale;
+    let len_sq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
 
-            // Vector from a to b
-            let ab = Point3::new(
-                b_point.x - a_point.x,
-                b_point.y - a_point.y,
-                b_point.z - a_point.z,
-            );
-            // Vector from a to p
-            let ap = Point3::new(p.x - a_point.x, p.y - a_point.y, p.z - a_point.z);
-
-            let len_sq = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
-
-            if len_sq < 1e-10 {
-                // Points are coincident, just use sphere at a
-                return ap.coords.norm() - a_radius;
-            }
-
-            // Project point onto line segment, clamp to [0, 1]
-            let dot = ap.x * ab.x + ap.y * ab.y + ap.z * ab.z;
-            let t = (dot / len_sq).clamp(0.0, 1.0);
-
-            // Closest point on segment
-            let closest = Point3::new(
-                a_point.x + ab.x * t,
-                a_point.y + ab.y * t,
-                a_point.z + ab.z * t,
-            );
-
-            // Interpolated radius
-            let radius = a_radius * (1.0 - t) + b_radius * t;
-
-            // Distance to capsule surface
-            let diff = Point3::new(p.x - closest.x, p.y - closest.y, p.z - closest.z);
-            diff.coords.norm() - radius
-        };
-
-        let mut min = f64::INFINITY;
-
-        for pair in pillar.points.windows(2) {
-            min = min.min(sd_capsule_segment(p, &pair[0], &pair[1]));
-        }
-
-        min
+    if len_sq < 1e-10 {
+        // Points are coincident, just use sphere at a
+        return ap.coords.norm() - a_radius;
     }
+
+    // Project point onto line segment, clamp to [0, 1]
+    let dot = ap.x * ab.x + ap.y * ab.y + ap.z * ab.z;
+    let t = (dot / len_sq).clamp(0.0, 1.0);
+
+    // Closest point on segment
+    let closest = Point3::new(
+        a_point.x + ab.x * t,
+        a_point.y + ab.y * t,
+        a_point.z + ab.z * t,
+    );
+
+    // Interpolated radius
+    let radius = a_radius * (1.0 - t) + b_radius * t;
+
+    // Distance to capsule surface
+    let diff = Point3::new(p.x - closest.x, p.y - closest.y, p.z - closest.z);
+    diff.coords.norm() - radius
 }
 
 /// Compute the bounding box needed for CSG generation from visible mesh features
@@ -352,6 +391,55 @@ fn collect_flood_fill_pillars<'a, V: VisibilityCheck>(
     pillars
 }
 
+/// Build spatial bins by sampling each segment's SDF on a coarse grid
+fn build_spatial_bins(
+    bounds: &Aabb,
+    lines: &[&UFloodFillLine],
+    pillars: &[&UFloodFillPillar],
+) -> SpatialBins {
+    const BIN_COUNT: usize = 20;
+    let mut bins = SpatialBins::new(bounds, BIN_COUNT);
+    let threshold = bins.threshold();
+    let total_bins = bins.total_bins();
+
+    // Sample each line segment
+    for (line_idx, line) in lines.iter().enumerate() {
+        for seg_idx in 0..line.points.len().saturating_sub(1) {
+            let a = &line.points[seg_idx];
+            let b = &line.points[seg_idx + 1];
+
+            for bin_idx in 0..total_bins {
+                let center = bins.bin_center(bin_idx);
+                if line_segment_sdf(a, b, &center) < threshold {
+                    bins.bins[bin_idx].push(SegmentRef::Line { line_idx, seg_idx });
+                }
+            }
+        }
+    }
+
+    // Sample each pillar segment
+    for (pillar_idx, pillar) in pillars.iter().enumerate() {
+        let range_scale = ((pillar.range_scale.min + pillar.range_scale.max) * 0.5) as f64;
+
+        for seg_idx in 0..pillar.points.len().saturating_sub(1) {
+            let a = &pillar.points[seg_idx];
+            let b = &pillar.points[seg_idx + 1];
+
+            for bin_idx in 0..total_bins {
+                let center = bins.bin_center(bin_idx);
+                if pillar_segment_sdf(a, b, range_scale, &center) < threshold {
+                    bins.bins[bin_idx].push(SegmentRef::Pillar {
+                        pillar_idx,
+                        seg_idx,
+                    });
+                }
+            }
+        }
+    }
+
+    bins
+}
+
 /// Build CSG from all visible mesh features in the room
 pub fn build_csg_from_features<V: VisibilityCheck>(
     room: &URoomGenerator,
@@ -365,26 +453,47 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
         return None;
     }
 
-    // Create combined SDF:
+    // Build spatial acceleration structure
+    let bins = build_spatial_bins(&bounds, &lines, &pillars);
+
+    // Precompute pillar range scales
+    let pillar_range_scales: Vec<f64> = pillars
+        .iter()
+        .map(|p| ((p.range_scale.min + p.range_scale.max) * 0.5) as f64)
+        .collect();
+
+    // Create combined SDF using spatial bins for acceleration:
     // - Lines carve (create cave space): union (min) of all line SDFs
     // - Pillars fill material: subtract from cave using max(cave_sdf, -pillar_sdf)
-    let combined_sdf = move |p: &Point3<f64>| {
-        // Cave SDF from lines (min = union)
-        let mut cave_dist = f64::INFINITY;
-        for line in &lines {
-            let sdf = flood_fill_line_sdf(line);
-            cave_dist = cave_dist.min(sdf(p));
-        }
+    let combined_sdf = |p: &Point3<f64>| {
+        let bin_idx = bins.point_to_bin(p);
+        let segments = &bins.bins[bin_idx];
 
-        // Pillar SDF (min = union of all pillars)
+        let mut cave_dist = f64::INFINITY;
         let mut pillar_dist = f64::INFINITY;
-        for pillar in &pillars {
-            let sdf = flood_fill_pillar_sdf(pillar);
-            pillar_dist = pillar_dist.min(sdf(p));
+
+        for seg in segments {
+            match *seg {
+                SegmentRef::Line { line_idx, seg_idx } => {
+                    let line = &lines[line_idx];
+                    let a = &line.points[seg_idx];
+                    let b = &line.points[seg_idx + 1];
+                    cave_dist = cave_dist.min(line_segment_sdf(a, b, p));
+                }
+                SegmentRef::Pillar {
+                    pillar_idx,
+                    seg_idx,
+                } => {
+                    let pillar = &pillars[pillar_idx];
+                    let a = &pillar.points[seg_idx];
+                    let b = &pillar.points[seg_idx + 1];
+                    let range_scale = pillar_range_scales[pillar_idx];
+                    pillar_dist = pillar_dist.min(pillar_segment_sdf(a, b, range_scale, p));
+                }
+            }
         }
 
         // Subtract pillars from cave: max(cave, -pillar)
-        // This removes pillar regions from the carved space
         if pillar_dist < f64::INFINITY {
             cave_dist.max(-pillar_dist)
         } else {
@@ -393,7 +502,6 @@ pub fn build_csg_from_features<V: VisibilityCheck>(
     };
 
     // Calculate grid resolution based on bounds size
-    // Use approximately 1 unit per cell, clamped to reasonable limits
     let size = bounds.size();
     let max_dim = size.x.max(size.y).max(size.z);
     let resolution = ((max_dim / 50.0) as usize).clamp(50, 200);
