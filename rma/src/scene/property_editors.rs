@@ -197,3 +197,18 @@ pub fn edit_rand_line_point(ui: &mut Ui, _idx: usize, point: &mut FRandLinePoint
 pub fn edit_fvector_point(ui: &mut Ui, _idx: usize, point: &mut FVector) -> bool {
     edit_fvector(ui, "Point", point)
 }
+
+/// Edit an Option<UClass> (optional class reference as string)
+/// Empty string is treated as None
+pub fn edit_optional_uclass(ui: &mut Ui, label: &str, value: &mut Option<UClass>) -> bool {
+    let mut changed = false;
+    ui.horizontal(|ui| {
+        ui.label(label);
+        let mut text = value.clone().unwrap_or_default();
+        if ui.text_edit_singleline(&mut text).changed() {
+            *value = if text.is_empty() { None } else { Some(text) };
+            changed = true;
+        }
+    });
+    changed
+}

@@ -399,18 +399,39 @@ pub fn build_feature(
                 },
             });
 
+            let material = PhysicalMaterial::new_opaque(
+                ctx.context,
+                &CpuMaterial {
+                    albedo,
+                    ..Default::default()
+                },
+            );
+
             let mut sphere = Gm::new(
                 Mesh::new(ctx.context, &CpuMesh::sphere(16)),
-                PhysicalMaterial::new_opaque(
-                    ctx.context,
-                    &CpuMaterial {
-                        albedo,
-                        ..Default::default()
-                    },
-                ),
+                material.clone(),
             );
-            sphere.set_transformation(Mat4::from_translation(location) * Mat4::from_scale(100.0));
-            vec![Box::new(sphere)]
+            sphere.set_transformation(Mat4::from_translation(location) * Mat4::from_scale(30.0));
+
+            // Build rotation matrix from direction FRotator
+            let roll = radians(f.direction.roll.to_radians());
+            let pitch = radians((-f.direction.pitch).to_radians());
+            let yaw = radians(f.direction.yaw.to_radians());
+            let rot =
+                Mat4::from_angle_z(yaw) * Mat4::from_angle_y(pitch) * Mat4::from_angle_x(roll);
+
+            // Arrow pointing in the direction
+            let mut arrow = Gm::new(
+                Mesh::new(ctx.context, &CpuMesh::arrow(0.9, 0.6, 16)),
+                material,
+            );
+            arrow.set_transformation(
+                Mat4::from_translation(location)
+                    * rot
+                    * Mat4::from_nonuniform_scale(400.0, 20.0, 20.0),
+            );
+
+            vec![Box::new(sphere), Box::new(arrow)]
         }
 
         URoomFeatureType::SpawnActor(f) => {
@@ -611,6 +632,7 @@ pub fn edit_feature<'s>(
 
         URoomFeatureType::SpawnActor(f) => {
             changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_optional_uclass(ui, "Actor To Spawn", &mut f.actor_to_spawn);
             changed |= edit_fvector(ui, "Adjustment Direction", &mut f.adjustment_direction);
             changed |= edit_enum(ui, "Adjustment", &mut f.adjustment);
             changed |= edit_fvector(ui, "Scale Min", &mut f.scale_min);
@@ -619,6 +641,7 @@ pub fn edit_feature<'s>(
         }
 
         URoomFeatureType::SpawnTrigger(f) => {
+            changed |= edit_optional_uclass(ui, "Trigger Class", &mut f.trigger_class);
             changed |= edit_string(ui, "Message", &mut f.message);
             changed |= edit_fvector(ui, "Translation", &mut f.transform.translation);
             let mut rotator: FRotator = f.transform.rotation.into();
@@ -636,6 +659,7 @@ pub fn edit_feature<'s>(
 
         URoomFeatureType::DropPodCalldownLocation(f) => {
             changed |= edit_fvector(ui, "Location", &mut f.location);
+            changed |= edit_optional_uclass(ui, "Calldown Class", &mut f.calldown_class);
         }
     }
 
