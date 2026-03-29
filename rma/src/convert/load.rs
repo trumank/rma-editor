@@ -343,7 +343,7 @@ fn load_resource(_pool: &ObjectPool, props: &Properties<AssetArchiveType>) -> UR
 fn load_drop_pod_calldown(props: &Properties<AssetArchiveType>) -> UDropPodCalldownLocationFeature {
     UDropPodCalldownLocationFeature {
         location: get_prop!(props, "Location" => Vector),
-        calldown_class: get_prop!(props, "CalldownClass" => ObjectRef)
+        calldown_class: get_prop!(props, "CallDownClass" => ObjectRef)
             .and_then(|r| r.as_path().map(|s| s.to_string())),
     }
 }

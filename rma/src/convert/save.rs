@@ -415,7 +415,7 @@ fn save_drop_pod_calldown(
 ) {
     set_prop!(props, "Location" => Vector(f.location));
     if let Some(class) = &f.calldown_class {
-        set_prop!(props, "CalldownClass" => Object(ObjectRef::Unloaded(class.clone().into())));
+        set_prop!(props, "CallDownClass" => Object(ObjectRef::Unloaded(class.clone().into())));
     }
 }
 
